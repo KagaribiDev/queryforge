@@ -1,0 +1,39 @@
+[project]
+name = "queryforge"
+version = "0.1.0"
+description = "LLM-powered Text-to-SQL agent: natural language queries to data warehouse"
+requires-python = ">=3.11"
+dependencies = [
+    "asyncmy>=0.2.11",
+    "cryptography>=46.0.3",
+    "elasticsearch[async]>=8,<9",
+    "fastapi[standard]>=0.128.0",
+    "huggingface-hub>=0.36.0",
+    "jieba>=0.42.1",
+    "langchain>=1.2.6",
+    "langchain-deepseek>=1.0.1",
+    "langchain-huggingface>=1.2.0",
+    "langgraph>=1.0.6",
+    "loguru>=0.7.3",
+    "omegaconf>=2.3.0",
+    "pyyaml>=6.0.3",
+    "qdrant-client>=1.16.2",
+    "redis>=6.2",
+    "sqlalchemy>=2.0.45",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-m 'not integration'"
+markers = [
+    "integration: 需要真实 MySQL/LLM 的集成测试,默认跳过,本地用 pytest -m integration 运行",
+]
+
+[tool.setuptools.packages.find]
+include = ["app*"]

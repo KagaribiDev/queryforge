@@ -1,0 +1,35 @@
+# 默认识别文本文件，并在仓库中统一保存为 LF
+* text=auto
+.gitattributes text eol=lf
+.gitignore     text eol=lf
+
+# 项目文本文件：Windows 开发、Linux CI 使用一致的 LF
+*.py       text eol=lf
+*.toml     text eol=lf
+*.yaml     text eol=lf
+*.yml      text eol=lf
+*.json     text eol=lf
+*.md       text eol=lf
+*.prompt   text eol=lf
+*.sql      text eol=lf
+*.js       text eol=lf
+*.vue      text eol=lf
+*.css      text eol=lf
+*.html     text eol=lf
+*.lock     text eol=lf
+
+# Windows 原生脚本保留 CRLF
+*.bat      text eol=crlf
+*.cmd      text eol=crlf
+*.ps1      text eol=crlf
+
+# 二进制文件禁止换行符转换
+*.zip      binary
+*.png      binary
+*.jpg      binary
+*.jpeg     binary
+*.gif      binary
+*.ico      binary
+*.pdf      binary
+*.woff     binary
+*.woff2    binary
