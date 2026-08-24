@@ -1,0 +1,1022 @@
+[
+  {
+    "id": "E001",
+    "category": "single_agg",
+    "query": "一共有多少笔订单",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 7.9,
+    "generated_sql": "SELECT COUNT(order_id) AS total_orders FROM fact_order;",
+    "error_detail": null
+  },
+  {
+    "id": "E002",
+    "category": "single_agg",
+    "query": "2025年1月份的销售额总和是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 9.2,
+    "generated_sql": "SELECT SUM(fo.order_amount) AS GMV FROM fact_order fo JOIN dim_date dd ON fo.date_id = dd.date_id WHERE dd.year = 2025 AND dd.month = 1;",
+    "error_detail": null
+  },
+  {
+    "id": "E003",
+    "category": "single_agg",
+    "query": "平均每笔订单的金额是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 9.2,
+    "generated_sql": "SELECT ROUND(AVG(order_amount), 2) AS AOV FROM fact_order;",
+    "error_detail": null
+  },
+  {
+    "id": "E004",
+    "category": "single_agg",
+    "query": "所有订单的销量总和是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 8.8,
+    "generated_sql": "SELECT SUM(order_quantity) AS total_sales_quantity FROM fact_order;",
+    "error_detail": null
+  },
+  {
+    "id": "E005",
+    "category": "single_agg",
+    "query": "金额最高的单笔订单是多少钱",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 9.3,
+    "generated_sql": "SELECT MAX(order_amount) AS max_order_amount FROM fact_order;",
+    "error_detail": null
+  },
+  {
+    "id": "E006",
+    "category": "metric",
+    "query": "2025年2月份的GMV是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 4.8,
+    "generated_sql": "SELECT SUM(f.order_amount) AS GMV\nFROM fact_order f\nJOIN dim_date d ON f.date_id = d.date_id\nWHERE d.year = 2025 AND d.month = 2",
+    "error_detail": null
+  },
+  {
+    "id": "E007",
+    "category": "metric",
+    "query": "2025年1月份的成交总额是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 7.0,
+    "generated_sql": "SELECT SUM(fo.order_amount) AS GMV FROM fact_order fo JOIN dim_date dd ON fo.date_id = dd.date_id WHERE dd.year = 2025 AND dd.month = 1",
+    "error_detail": null
+  },
+  {
+    "id": "E008",
+    "category": "time_filter",
+    "query": "2025年第一季度的GMV是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 7.7,
+    "generated_sql": "SELECT SUM(f.order_amount) AS GMV FROM fact_order f JOIN dim_date d ON f.date_id = d.date_id WHERE d.quarter = 'Q1' AND f.date_id BETWEEN 20250101 AND 20250331",
+    "error_detail": null
+  },
+  {
+    "id": "E009",
+    "category": "time_filter",
+    "query": "2025年3月份的订单数量是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 8.5,
+    "generated_sql": "SELECT COUNT(fo.order_id) AS order_count\nFROM fact_order fo\nJOIN dim_date dd ON fo.date_id = dd.date_id\nWHERE dd.year = 2025 AND dd.month = 3;",
+    "error_detail": null
+  },
+  {
+    "id": "E010",
+    "category": "time_filter",
+    "query": "2025年3月每天的销售额分别是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 8.2,
+    "generated_sql": "SELECT \n    dd.date_id AS date,\n    SUM(fo.order_amount) AS daily_sales\nFROM fact_order fo\nJOIN dim_date dd ON fo.date_id = dd.date_id\nWHERE dd.date_id BETWEEN 20250301 AND 20250331\nGROUP BY dd.date_id\nORDER BY dd.date_id;",
+    "error_detail": null
+  },
+  {
+    "id": "E011",
+    "category": "rank",
+    "query": "2025年1月份哪天卖得最好",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 5.6,
+    "generated_sql": "SELECT d.date_id, SUM(f.order_amount) AS total_amount\nFROM fact_order f\nJOIN dim_date d ON f.date_id = d.date_id\nWHERE d.year = 2025 AND d.month = 1\nGROUP BY d.date_id\nORDER BY total_amount DESC\nLIMIT 1",
+    "error_detail": null
+  },
+  {
+    "id": "E012",
+    "category": "join",
+    "query": "各品类的销售额分别是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 4.6,
+    "generated_sql": "SELECT \n    dp.category AS 品类,\n    SUM(fo.order_amount) AS 销售额\nFROM fact_order fo\nJOIN dim_product dp ON fo.product_id = dp.product_id\nGROUP BY dp.category\nORDER BY 销售额 DESC;",
+    "error_detail": null
+  },
+  {
+    "id": "E013",
+    "category": "join",
+    "query": "各省份的订单数量分别是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 6.0,
+    "generated_sql": "SELECT d.province, COUNT(f.order_id) AS order_count FROM fact_order f JOIN dim_region d ON f.region_id = d.region_id GROUP BY d.province;",
+    "error_detail": null
+  },
+  {
+    "id": "E014",
+    "category": "join",
+    "query": "华东大区的销售额是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 8.3,
+    "generated_sql": "SELECT SUM(f.order_amount) AS GMV FROM fact_order f JOIN dim_region r ON f.region_id = r.region_id WHERE r.region_name = '华东';",
+    "error_detail": null
+  },
+  {
+    "id": "E015",
+    "category": "join",
+    "query": "各品牌的销量分别是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 6.9,
+    "generated_sql": "SELECT \n    dp.brand,\n    SUM(fo.order_quantity) AS total_sales_quantity\nFROM \n    fact_order fo\nINNER JOIN \n    dim_product dp ON fo.product_id = dp.product_id\nGROUP BY \n    dp.brand\nORDER BY \n    total_sales_quantity DESC;",
+    "error_detail": null
+  },
+  {
+    "id": "E016",
+    "category": "share",
+    "query": "各品类2025年1月份的销售额占比是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 7.9,
+    "generated_sql": "SELECT \n    dp.category,\n    ROUND(SUM(fo.order_amount) / SUM(SUM(fo.order_amount)) OVER () * 100, 2) AS sales_ratio\nFROM fact_order fo\nJOIN dim_date dd ON fo.date_id = dd.date_id\nJOIN dim_product dp ON fo.product_id = dp.product_id\nWHERE dd.year = 2025 AND dd.month = 1\nGROUP BY dp.category;",
+    "error_detail": null
+  },
+  {
+    "id": "E017",
+    "category": "share",
+    "query": "各大区的销售额占比是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 6.0,
+    "generated_sql": "SELECT \n    r.region_name AS 大区,\n    ROUND(SUM(f.order_amount) / (SELECT SUM(order_amount) FROM fact_order) * 100, 2) AS 销售额占比\nFROM fact_order f\nJOIN dim_region r ON f.region_id = r.region_id\nGROUP BY r.region_name\nORDER BY 销售额占比 DESC;",
+    "error_detail": null
+  },
+  {
+    "id": "E018",
+    "category": "share",
+    "query": "手机数码品类的销售额占总销售额的比例是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 6.5,
+    "generated_sql": "SELECT ROUND(SUM(CASE WHEN d.category = '手机数码' THEN f.order_amount ELSE 0 END) / SUM(f.order_amount) * 100, 2) AS sales_ratio_percent FROM fact_order f JOIN dim_product d ON f.product_id = d.product_id;",
+    "error_detail": null
+  },
+  {
+    "id": "E019",
+    "category": "rank",
+    "query": "卖得最好的品类是哪个",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 5.8,
+    "generated_sql": "SELECT d.category, SUM(f.order_amount) AS total_sales\nFROM fact_order f\nJOIN dim_product d ON f.product_id = d.product_id\nGROUP BY d.category\nORDER BY total_sales DESC\nLIMIT 1;",
+    "error_detail": null
+  },
+  {
+    "id": "E020",
+    "category": "rank",
+    "query": "销售额最高的三个商品是什么",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 6.5,
+    "generated_sql": "SELECT p.product_name, SUM(f.order_amount) AS total_sales\nFROM fact_order f\nJOIN dim_product p ON f.product_id = p.product_id\nGROUP BY p.product_name\nORDER BY total_sales DESC\nLIMIT 3",
+    "error_detail": null
+  },
+  {
+    "id": "E021",
+    "category": "rank",
+    "query": "哪个省份的订单数量最多",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 6.6,
+    "generated_sql": "SELECT d.province, COUNT(f.order_id) AS order_count\nFROM fact_order f\nJOIN dim_region d ON f.region_id = d.region_id\nGROUP BY d.province\nORDER BY order_count DESC\nLIMIT 1",
+    "error_detail": null
+  },
+  {
+    "id": "E022",
+    "category": "rank",
+    "query": "销量最少的品牌是哪个",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 5.5,
+    "generated_sql": "SELECT d.brand FROM dim_product d LEFT JOIN fact_order f ON d.product_id = f.product_id GROUP BY d.brand ORDER BY SUM(COALESCE(f.order_quantity, 0)) ASC LIMIT 1;",
+    "error_detail": null
+  },
+  {
+    "id": "E023",
+    "category": "group_by",
+    "query": "各会员等级的订单数量分别是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 5.4,
+    "generated_sql": "SELECT \n    dc.member_level,\n    COUNT(fo.order_id) AS order_count\nFROM fact_order fo\nLEFT JOIN dim_customer dc ON fo.customer_id = dc.customer_id\nGROUP BY dc.member_level\nORDER BY order_count DESC;",
+    "error_detail": null
+  },
+  {
+    "id": "E024",
+    "category": "group_by",
+    "query": "男性和女性客户分别买了多少钱的东西",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 9.2,
+    "generated_sql": "SELECT \n  d.gender,\n  SUM(f.order_amount) AS total_amount\nFROM fact_order f\nJOIN dim_customer d ON f.customer_id = d.customer_id\nGROUP BY d.gender;",
+    "error_detail": null
+  },
+  {
+    "id": "E025",
+    "category": "time_filter",
+    "query": "2025年各个月的订单数量分别是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 7.6,
+    "generated_sql": "SELECT \n    dd.month,\n    COUNT(fo.order_id) AS order_count\nFROM fact_order fo\nJOIN dim_date dd ON fo.date_id = dd.date_id\nWHERE dd.year = 2025\nGROUP BY dd.month\nORDER BY dd.month;",
+    "error_detail": null
+  },
+  {
+    "id": "E026",
+    "category": "group_by",
+    "query": "每个省份的平均订单金额是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 8.2,
+    "generated_sql": "SELECT \n    r.province,\n    ROUND(AVG(f.order_amount), 2) AS avg_order_amount\nFROM fact_order f\nJOIN dim_region r ON f.region_id = r.region_id\nGROUP BY r.province;",
+    "error_detail": null
+  },
+  {
+    "id": "E027",
+    "category": "group_by",
+    "query": "各品类各品牌的销售额分别是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 7.7,
+    "generated_sql": "SELECT \n    dp.category AS 品类,\n    dp.brand AS 品牌,\n    SUM(fo.order_amount) AS 销售额\nFROM fact_order fo\nJOIN dim_product dp ON fo.product_id = dp.product_id\nGROUP BY dp.category, dp.brand\nORDER BY dp.category, dp.brand;",
+    "error_detail": null
+  },
+  {
+    "id": "E028",
+    "category": "time_filter",
+    "query": "2025年2月和3月的销售额分别是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 5.9,
+    "generated_sql": "SELECT \n    d.year,\n    d.month,\n    SUM(f.order_amount) AS sales_amount\nFROM fact_order f\nJOIN dim_date d ON f.date_id = d.date_id\nWHERE d.year = 2025 AND d.month IN (2, 3)\nGROUP BY d.year, d.month\nORDER BY d.month;",
+    "error_detail": null
+  },
+  {
+    "id": "E029",
+    "category": "metric",
+    "query": "所有订单的平均订单金额是多少(AOV)",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 7.3,
+    "generated_sql": "SELECT ROUND(AVG(order_amount), 2) AS AOV FROM fact_order;",
+    "error_detail": null
+  },
+  {
+    "id": "E030",
+    "category": "metric",
+    "query": "2025年3月份的GMV是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 7.9,
+    "generated_sql": "SELECT SUM(f.order_amount) AS GMV\nFROM fact_order f\nJOIN dim_date d ON f.date_id = d.date_id\nWHERE d.year = 2025 AND d.month = 3;",
+    "error_detail": null
+  },
+  {
+    "id": "E031",
+    "category": "rank",
+    "query": "订单总额最高的月份是几月",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 9.3,
+    "generated_sql": "SELECT d.month, SUM(f.order_amount) AS total_amount\nFROM fact_order f\nJOIN dim_date d ON f.date_id = d.date_id\nGROUP BY d.month\nORDER BY total_amount DESC\nLIMIT 1",
+    "error_detail": null
+  },
+  {
+    "id": "E032",
+    "category": "group_by",
+    "query": "广东和浙江两个省的订单数量分别是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 9.1,
+    "generated_sql": "SELECT \n    r.province,\n    COUNT(f.order_id) AS order_count\nFROM fact_order f\nJOIN dim_region r ON f.region_id = r.region_id\nWHERE r.province IN ('广东省', '浙江省')\nGROUP BY r.province;",
+    "error_detail": null
+  },
+  {
+    "id": "E033",
+    "category": "join",
+    "query": "手机数码品类在2月份的GMV是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 9.6,
+    "generated_sql": "SELECT SUM(fo.order_amount) AS GMV\nFROM fact_order fo\nJOIN dim_date dd ON fo.date_id = dd.date_id\nJOIN dim_product dp ON fo.product_id = dp.product_id\nWHERE dp.category = '手机数码'\n  AND dd.year = 2025\n  AND dd.month = 2",
+    "error_detail": null
+  },
+  {
+    "id": "E034",
+    "category": "join",
+    "query": "三星品牌的订单有多少笔",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 4.3,
+    "generated_sql": "SELECT COUNT(o.order_id) AS order_count\nFROM fact_order o\nJOIN dim_product p ON o.product_id = p.product_id\nWHERE p.brand = '三星';",
+    "error_detail": null
+  },
+  {
+    "id": "E035",
+    "category": "non_query",
+    "query": "你好",
+    "verdict": "classify_correct",
+    "correct_count": null,
+    "elapsed": 1.9,
+    "generated_sql": null,
+    "error_detail": null
+  },
+  {
+    "id": "E036",
+    "category": "non_query",
+    "query": "谢谢你的帮助",
+    "verdict": "classify_correct",
+    "correct_count": null,
+    "elapsed": 1.5,
+    "generated_sql": null,
+    "error_detail": null
+  },
+  {
+    "id": "E037",
+    "category": "non_query",
+    "query": "你是谁",
+    "verdict": "classify_correct",
+    "correct_count": null,
+    "elapsed": 1.2,
+    "generated_sql": null,
+    "error_detail": null
+  },
+  {
+    "id": "E038",
+    "category": "non_query",
+    "query": "你能做什么",
+    "verdict": "classify_correct",
+    "correct_count": null,
+    "elapsed": 2.0,
+    "generated_sql": null,
+    "error_detail": null
+  },
+  {
+    "id": "E039",
+    "category": "non_query",
+    "query": "今天天气怎么样",
+    "verdict": "classify_correct",
+    "correct_count": null,
+    "elapsed": 1.8,
+    "generated_sql": null,
+    "error_detail": null
+  },
+  {
+    "id": "E040",
+    "category": "non_query",
+    "query": "讲个笑话吧",
+    "verdict": "classify_correct",
+    "correct_count": null,
+    "elapsed": 1.6,
+    "generated_sql": null,
+    "error_detail": null
+  },
+  {
+    "id": "E041",
+    "category": "non_query",
+    "query": "什么是机器学习",
+    "verdict": "classify_correct",
+    "correct_count": null,
+    "elapsed": 1.8,
+    "generated_sql": null,
+    "error_detail": null
+  },
+  {
+    "id": "E042",
+    "category": "non_query",
+    "query": "再见",
+    "verdict": "classify_correct",
+    "correct_count": null,
+    "elapsed": 1.1,
+    "generated_sql": null,
+    "error_detail": null
+  },
+  {
+    "id": "E043",
+    "category": "multi_join",
+    "query": "各会员等级的客户在手机数码品类的销售额分别是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 9.2,
+    "generated_sql": "SELECT \n    dc.member_level,\n    SUM(fo.order_amount) AS sales_amount\nFROM fact_order fo\nJOIN dim_customer dc ON fo.customer_id = dc.customer_id\nJOIN dim_product dp ON fo.product_id = dp.product_id\nWHERE dp.category = '手机数码'\nGROUP BY dc.member_level",
+    "error_detail": null
+  },
+  {
+    "id": "E044",
+    "category": "multi_join",
+    "query": "广东省各品类的销售额分别是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 9.8,
+    "generated_sql": "SELECT \n    r.province,\n    p.category,\n    SUM(f.order_amount) AS sales_amount\nFROM fact_order f\nJOIN dim_region r ON f.region_id = r.region_id\nJOIN dim_product p ON f.product_id = p.product_id\nWHERE r.province = '广东省'\nGROUP BY r.province, p.category\nORDER BY sales_amount DESC",
+    "error_detail": null
+  },
+  {
+    "id": "E045",
+    "category": "multi_join",
+    "query": "各月份各大区的销售额分别是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 9.7,
+    "generated_sql": "SELECT \n    dd.month AS 月份,\n    dr.region_name AS 大区,\n    SUM(fo.order_amount) AS 销售额\nFROM fact_order fo\nJOIN dim_date dd ON fo.date_id = dd.date_id\nJOIN dim_region dr ON fo.region_id = dr.region_id\nGROUP BY dd.month, dr.region_name\nORDER BY dd.month, dr.region_name",
+    "error_detail": null
+  },
+  {
+    "id": "E046",
+    "category": "multi_join",
+    "query": "女性客户在2月份的销售额是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 11.1,
+    "generated_sql": "SELECT SUM(fo.order_amount) AS GMV\nFROM fact_order fo\nJOIN dim_customer dc ON fo.customer_id = dc.customer_id\nJOIN dim_date dd ON fo.date_id = dd.date_id\nWHERE dc.gender = '女'\n  AND dd.month = 2;",
+    "error_detail": null
+  },
+  {
+    "id": "E047",
+    "category": "multi_join",
+    "query": "华东大区黄金会员的销售额是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 9.7,
+    "generated_sql": "SELECT SUM(f.order_amount) AS GMV\nFROM fact_order f\nJOIN dim_region r ON f.region_id = r.region_id\nJOIN dim_customer c ON f.customer_id = c.customer_id\nWHERE r.region_name = '华东'\n  AND c.member_level = '黄金';",
+    "error_detail": null
+  },
+  {
+    "id": "E048",
+    "category": "multi_join",
+    "query": "男性和女性客户在各品类的销售额分别是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 5.0,
+    "generated_sql": "SELECT \n    dc.gender AS 性别,\n    dp.category AS 品类,\n    SUM(fo.order_amount) AS 销售额\nFROM fact_order fo\nJOIN dim_customer dc ON fo.customer_id = dc.customer_id\nJOIN dim_product dp ON fo.product_id = dp.product_id\nGROUP BY dc.gender, dp.category\nORDER BY dc.gender, dp.category;",
+    "error_detail": null
+  },
+  {
+    "id": "E049",
+    "category": "multi_join",
+    "query": "各品牌1月份的销售额分别是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 8.8,
+    "generated_sql": "SELECT \n    dp.brand,\n    SUM(fo.order_amount) AS sales_amount\nFROM fact_order fo\nJOIN dim_date dd ON fo.date_id = dd.date_id\nJOIN dim_product dp ON fo.product_id = dp.product_id\nWHERE dd.month = 1\nGROUP BY dp.brand\nORDER BY sales_amount DESC;",
+    "error_detail": null
+  },
+  {
+    "id": "E050",
+    "category": "multi_join",
+    "query": "白银会员在2月份的订单有多少笔",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 8.2,
+    "generated_sql": "SELECT COUNT(fo.order_id) AS order_count\nFROM fact_order fo\nJOIN dim_customer dc ON fo.customer_id = dc.customer_id\nJOIN dim_date dd ON fo.date_id = dd.date_id\nWHERE dc.member_level = '白银'\n  AND dd.year = 2025\n  AND dd.month = 2;",
+    "error_detail": null
+  },
+  {
+    "id": "E051",
+    "category": "multi_join",
+    "query": "各省份手机数码品类的订单数量分别是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 10.9,
+    "generated_sql": "SELECT \n    r.province,\n    COUNT(o.order_id) AS order_count\nFROM fact_order o\nJOIN dim_product p ON o.product_id = p.product_id\nJOIN dim_region r ON o.region_id = r.region_id\nWHERE p.category = '手机数码'\nGROUP BY r.province\nORDER BY order_count DESC;",
+    "error_detail": null
+  },
+  {
+    "id": "E052",
+    "category": "multi_join",
+    "query": "各会员等级客户的平均订单金额分别是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 9.6,
+    "generated_sql": "SELECT \n    dc.member_level,\n    ROUND(AVG(fo.order_amount), 2) AS avg_order_amount\nFROM \n    fact_order fo\nJOIN \n    dim_customer dc ON fo.customer_id = dc.customer_id\nGROUP BY \n    dc.member_level;",
+    "error_detail": null
+  },
+  {
+    "id": "E053",
+    "category": "multi_join",
+    "query": "3月份各品类的销量分别是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 7.9,
+    "generated_sql": "SELECT \n    dp.category AS 品类,\n    SUM(fo.order_quantity) AS 销量\nFROM fact_order fo\nJOIN dim_date dd ON fo.date_id = dd.date_id\nJOIN dim_product dp ON fo.product_id = dp.product_id\nWHERE dd.month = 3\nGROUP BY dp.category\nORDER BY 销量 DESC;",
+    "error_detail": null
+  },
+  {
+    "id": "E054",
+    "category": "multi_join",
+    "query": "男性客户各品类的订单数量分别是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 7.4,
+    "generated_sql": "SELECT \n    dp.category AS 品类,\n    COUNT(fo.order_id) AS 订单数量\nFROM fact_order fo\nJOIN dim_customer dc ON fo.customer_id = dc.customer_id\nJOIN dim_product dp ON fo.product_id = dp.product_id\nWHERE dc.gender = '男'\nGROUP BY dp.category\nORDER BY 订单数量 DESC;",
+    "error_detail": null
+  },
+  {
+    "id": "E055",
+    "category": "having",
+    "query": "销售额超过20000元的品牌有哪些",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 5.9,
+    "generated_sql": "SELECT p.brand\nFROM fact_order f\nJOIN dim_product p ON f.product_id = p.product_id\nGROUP BY p.brand\nHAVING SUM(f.order_amount) > 20000",
+    "error_detail": null
+  },
+  {
+    "id": "E056",
+    "category": "having",
+    "query": "销量超过50件的商品有哪些",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 6.4,
+    "generated_sql": "SELECT p.product_name, SUM(f.order_quantity) AS total_quantity\nFROM fact_order f\nJOIN dim_product p ON f.product_id = p.product_id\nGROUP BY p.product_name\nHAVING SUM(f.order_quantity) > 50;",
+    "error_detail": null
+  },
+  {
+    "id": "E057",
+    "category": "having",
+    "query": "订单数超过8笔的品牌有哪些",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 6.5,
+    "generated_sql": "SELECT p.brand\nFROM fact_order f\nJOIN dim_product p ON f.product_id = p.product_id\nGROUP BY p.brand\nHAVING COUNT(f.order_id) > 8;",
+    "error_detail": null
+  },
+  {
+    "id": "E058",
+    "category": "having",
+    "query": "销售额超过30000元的品类有哪些",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 6.6,
+    "generated_sql": "SELECT p.category\nFROM fact_order f\nJOIN dim_product p ON f.product_id = p.product_id\nGROUP BY p.category\nHAVING SUM(f.order_amount) > 30000",
+    "error_detail": null
+  },
+  {
+    "id": "E059",
+    "category": "having",
+    "query": "购买次数超过5次的客户有哪些",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 5.7,
+    "generated_sql": "SELECT c.customer_name\nFROM dim_customer c\nJOIN fact_order o ON c.customer_id = o.customer_id\nGROUP BY c.customer_id, c.customer_name\nHAVING COUNT(o.order_id) > 5;",
+    "error_detail": null
+  },
+  {
+    "id": "E060",
+    "category": "having",
+    "query": "销量大于15件的品类有哪些",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 4.7,
+    "generated_sql": "SELECT d.category\nFROM dim_product d\nJOIN fact_order f ON d.product_id = f.product_id\nGROUP BY d.category\nHAVING SUM(f.order_quantity) > 15",
+    "error_detail": null
+  },
+  {
+    "id": "E061",
+    "category": "having",
+    "query": "销售额超过15000元的品牌有多少个",
+    "verdict": "wrong_semantics",
+    "correct_count": null,
+    "elapsed": 9.0,
+    "generated_sql": "SELECT COUNT(DISTINCT p.brand) AS brand_count\nFROM fact_order f\nJOIN dim_product p ON f.product_id = p.product_id\nWHERE f.order_amount > 15000;",
+    "error_detail": null
+  },
+  {
+    "id": "E062",
+    "category": "having",
+    "query": "单日订单达到2笔的日期有多少个",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 8.5,
+    "generated_sql": "SELECT COUNT(*) AS date_count\nFROM (\n    SELECT f.date_id\n    FROM fact_order f\n    GROUP BY f.date_id\n    HAVING COUNT(f.order_id) >= 2\n) t;",
+    "error_detail": null
+  },
+  {
+    "id": "E063",
+    "category": "subquery",
+    "query": "销售额超过全品牌平均销售额的品牌有哪些",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 8.6,
+    "generated_sql": "SELECT p.brand,\n       SUM(f.order_amount) AS brand_sales\nFROM fact_order f\nJOIN dim_product p ON f.product_id = p.product_id\nGROUP BY p.brand\nHAVING SUM(f.order_amount) > (SELECT AVG(brand_sales) FROM (SELECT SUM(f2.order_amount) AS brand_sales FROM fact_order f2 JOIN dim_product p2 ON f2.product_id = p2.product_id GROUP BY p2.brand) t);",
+    "error_detail": null
+  },
+  {
+    "id": "E064",
+    "category": "subquery",
+    "query": "订单金额高于平均订单金额的订单有多少笔",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 8.2,
+    "generated_sql": "SELECT COUNT(order_id) AS order_count\nFROM fact_order\nWHERE order_amount > (SELECT AVG(order_amount) FROM fact_order);",
+    "error_detail": null
+  },
+  {
+    "id": "E065",
+    "category": "subquery",
+    "query": "购买过手机数码产品的客户有多少位",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 7.2,
+    "generated_sql": "SELECT COUNT(DISTINCT fo.customer_id) AS customer_count\nFROM fact_order fo\nJOIN dim_product dp ON fo.product_id = dp.product_id\nWHERE dp.category = '手机数码';",
+    "error_detail": null
+  },
+  {
+    "id": "E066",
+    "category": "subquery",
+    "query": "销售额最高的商品属于哪个品类",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 10.2,
+    "generated_sql": "SELECT c.category\nFROM (\n    SELECT p.category, SUM(f.order_amount) AS total_sales\n    FROM fact_order f\n    JOIN dim_product p ON f.product_id = p.product_id\n    GROUP BY p.category\n) c\nORDER BY c.total_sales DESC\nLIMIT 1",
+    "error_detail": null
+  },
+  {
+    "id": "E067",
+    "category": "subquery",
+    "query": "1月份和3月份都购买过的客户有多少位",
+    "verdict": "wrong_semantics",
+    "correct_count": null,
+    "elapsed": 8.5,
+    "generated_sql": "SELECT COUNT(DISTINCT f.customer_id) AS customer_count\nFROM fact_order f\nJOIN dim_date d ON f.date_id = d.date_id\nWHERE d.month IN (1, 3)\nGROUP BY f.customer_id\nHAVING COUNT(DISTINCT d.month) = 2;",
+    "error_detail": null
+  },
+  {
+    "id": "E068",
+    "category": "subquery",
+    "query": "金额最高的订单(单笔金额并列最高)总共有多少笔",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 10.9,
+    "generated_sql": "SELECT COUNT(*) AS order_count\nFROM fact_order\nWHERE order_amount = (SELECT MAX(order_amount) FROM fact_order);",
+    "error_detail": null
+  },
+  {
+    "id": "E069",
+    "category": "subquery",
+    "query": "销售额超过全品类平均销售额的品类有哪些",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 10.4,
+    "generated_sql": "SELECT \n    p.category,\n    SUM(f.order_amount) AS category_sales\nFROM fact_order f\nJOIN dim_product p ON f.product_id = p.product_id\nGROUP BY p.category\nHAVING SUM(f.order_amount) > (\n    SELECT AVG(category_sales)\n    FROM (\n        SELECT \n            p2.category,\n            SUM(f2.order_amount) AS category_sales\n        FROM fact_order f2\n        JOIN dim_product p2 ON f2.product_id = p2.product_id\n        GROUP BY p2.category\n    ) t\n)\nORDER BY category_sales DESC",
+    "error_detail": null
+  },
+  {
+    "id": "E070",
+    "category": "subquery",
+    "query": "购买过三星产品的客户有多少位",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 8.9,
+    "generated_sql": "SELECT COUNT(DISTINCT f.customer_id) AS customer_count\nFROM fact_order f\nINNER JOIN dim_product p ON f.product_id = p.product_id\nWHERE p.brand = '三星';",
+    "error_detail": null
+  },
+  {
+    "id": "E071",
+    "category": "subquery",
+    "query": "订单金额高于平均值的订单占总订单的比例是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 5.4,
+    "generated_sql": "SELECT ROUND(COUNT(CASE WHEN order_amount > (SELECT AVG(order_amount) FROM fact_order) THEN 1 END) * 100.0 / COUNT(*), 2) AS proportion FROM fact_order;",
+    "error_detail": null
+  },
+  {
+    "id": "E072",
+    "category": "subquery",
+    "query": "平均订单金额最高的省份是哪个",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 9.5,
+    "generated_sql": "SELECT d.province, ROUND(AVG(f.order_amount), 2) AS avg_order_amount\nFROM fact_order f\nJOIN dim_region d ON f.region_id = d.region_id\nGROUP BY d.province\nORDER BY avg_order_amount DESC\nLIMIT 1",
+    "error_detail": null
+  },
+  {
+    "id": "E073",
+    "category": "single_agg",
+    "query": "一共有多少位客户下过单",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 7.6,
+    "generated_sql": "SELECT COUNT(DISTINCT customer_id) AS customer_count FROM fact_order;",
+    "error_detail": null
+  },
+  {
+    "id": "E074",
+    "category": "single_agg",
+    "query": "一共有多少种商品被购买过",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 7.7,
+    "generated_sql": "SELECT COUNT(DISTINCT product_id) AS purchased_product_count FROM fact_order;",
+    "error_detail": null
+  },
+  {
+    "id": "E075",
+    "category": "single_agg",
+    "query": "2025年2月份的平均每日销售额是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 8.4,
+    "generated_sql": "SELECT ROUND(SUM(fo.order_amount) / COUNT(DISTINCT dd.date_id), 2) AS avg_daily_sales\nFROM fact_order fo\nJOIN dim_date dd ON fo.date_id = dd.date_id\nWHERE dd.year = 2025 AND dd.month = 2",
+    "error_detail": null
+  },
+  {
+    "id": "E076",
+    "category": "time_filter",
+    "query": "2025年1月1日的销售额是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 6.2,
+    "generated_sql": "SELECT SUM(order_amount) AS GMV FROM fact_order WHERE date_id = 20250101;",
+    "error_detail": null
+  },
+  {
+    "id": "E077",
+    "category": "time_filter",
+    "query": "2025年各季度的销售额分别是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 5.8,
+    "generated_sql": "SELECT \n    dd.quarter AS quarter,\n    SUM(fo.order_amount) AS total_sales\nFROM \n    fact_order fo\nJOIN \n    dim_date dd ON fo.date_id = dd.date_id\nWHERE \n    dd.date_id BETWEEN 20250101 AND 20251231\nGROUP BY \n    dd.quarter\nORDER BY \n    dd.quarter;",
+    "error_detail": null
+  },
+  {
+    "id": "E078",
+    "category": "time_filter",
+    "query": "2025年2月28日的订单数量是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 7.6,
+    "generated_sql": "SELECT COUNT(order_id) AS order_count FROM fact_order WHERE date_id = 20250228;",
+    "error_detail": null
+  },
+  {
+    "id": "E079",
+    "category": "time_filter",
+    "query": "2025年3月份的平均每日销售额是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 7.4,
+    "generated_sql": "SELECT ROUND(SUM(fo.order_amount) / COUNT(DISTINCT dd.date_id), 2) AS avg_daily_sales\nFROM fact_order fo\nJOIN dim_date dd ON fo.date_id = dd.date_id\nWHERE dd.year = 2025 AND dd.month = 3",
+    "error_detail": null
+  },
+  {
+    "id": "E080",
+    "category": "join",
+    "query": "各省份下单的客户数量分别是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 8.1,
+    "generated_sql": "SELECT \n    r.province,\n    COUNT(DISTINCT o.customer_id) AS customer_count\nFROM \n    fact_order o\nJOIN \n    dim_region r ON o.region_id = r.region_id\nGROUP BY \n    r.province\nORDER BY \n    customer_count DESC;",
+    "error_detail": null
+  },
+  {
+    "id": "E081",
+    "category": "join",
+    "query": "各品牌的订单数量分别是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 8.1,
+    "generated_sql": "SELECT \n    dp.brand,\n    COUNT(fo.order_id) AS order_count\nFROM \n    fact_order fo\nJOIN \n    dim_product dp ON fo.product_id = dp.product_id\nGROUP BY \n    dp.brand\nORDER BY \n    order_count DESC;",
+    "error_detail": null
+  },
+  {
+    "id": "E082",
+    "category": "join",
+    "query": "每个品类各有多少种商品",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 5.3,
+    "generated_sql": "SELECT category, COUNT(product_id) AS product_count FROM dim_product GROUP BY category;",
+    "error_detail": null
+  },
+  {
+    "id": "E083",
+    "category": "join",
+    "query": "食品饮料品类的销售额是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 6.2,
+    "generated_sql": "SELECT SUM(f.order_amount) AS GMV FROM fact_order f JOIN dim_product p ON f.product_id = p.product_id WHERE p.category = '食品饮料';",
+    "error_detail": null
+  },
+  {
+    "id": "E084",
+    "category": "metric",
+    "query": "2025年1月份的AOV是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 6.7,
+    "generated_sql": "SELECT ROUND(SUM(fo.order_amount) / COUNT(fo.order_id), 2) AS AOV\nFROM fact_order fo\nJOIN dim_date dd ON fo.date_id = dd.date_id\nWHERE dd.year = 2025 AND dd.month = 1",
+    "error_detail": null
+  },
+  {
+    "id": "E085",
+    "category": "metric",
+    "query": "2025年2月份的AOV是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 8.0,
+    "generated_sql": "SELECT ROUND(SUM(fo.order_amount) / COUNT(fo.order_id), 2) AS AOV\nFROM fact_order fo\nJOIN dim_date dd ON fo.date_id = dd.date_id\nWHERE dd.year = 2025 AND dd.month = 2",
+    "error_detail": null
+  },
+  {
+    "id": "E086",
+    "category": "metric",
+    "query": "3月份各品类的GMV分别是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 8.7,
+    "generated_sql": "SELECT \n    dp.category,\n    ROUND(SUM(fo.order_amount), 2) AS GMV\nFROM fact_order fo\nJOIN dim_date dd ON fo.date_id = dd.date_id\nJOIN dim_product dp ON fo.product_id = dp.product_id\nWHERE dd.year = 2025 AND dd.month = 3\nGROUP BY dp.category\nORDER BY GMV DESC;",
+    "error_detail": null
+  },
+  {
+    "id": "E087",
+    "category": "metric",
+    "query": "2025年第一季度的订单总额是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 6.7,
+    "generated_sql": "SELECT SUM(fo.order_amount) AS GMV FROM fact_order fo JOIN dim_date dd ON fo.date_id = dd.date_id WHERE dd.quarter = 'Q1' AND fo.date_id BETWEEN 20250101 AND 20250331",
+    "error_detail": null
+  },
+  {
+    "id": "E088",
+    "category": "share",
+    "query": "各品牌的销售额占比是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 6.6,
+    "generated_sql": "SELECT \n    dp.brand,\n    ROUND(SUM(fo.order_amount) * 100.0 / SUM(SUM(fo.order_amount)) OVER (), 2) AS sales_share_percent\nFROM fact_order fo\nJOIN dim_product dp ON fo.product_id = dp.product_id\nGROUP BY dp.brand;",
+    "error_detail": null
+  },
+  {
+    "id": "E089",
+    "category": "share",
+    "query": "各月份的销售额占比是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 5.7,
+    "generated_sql": "SELECT \n    d.month,\n    ROUND(SUM(f.order_amount) * 100.0 / SUM(SUM(f.order_amount)) OVER (), 2) AS sales_percentage\nFROM fact_order f\nJOIN dim_date d ON f.date_id = d.date_id\nGROUP BY d.month\nORDER BY d.month;",
+    "error_detail": null
+  },
+  {
+    "id": "E090",
+    "category": "share",
+    "query": "各品类的销量占比是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 5.4,
+    "generated_sql": "SELECT \n    dp.category,\n    ROUND(SUM(fo.order_quantity) * 100.0 / SUM(SUM(fo.order_quantity)) OVER (), 2) AS sales_quantity_ratio\nFROM fact_order fo\nJOIN dim_product dp ON fo.product_id = dp.product_id\nGROUP BY dp.category\nORDER BY sales_quantity_ratio DESC;",
+    "error_detail": null
+  },
+  {
+    "id": "E091",
+    "category": "rank",
+    "query": "销售额排名第二的品类是哪个",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 7.2,
+    "generated_sql": "SELECT p.category\nFROM fact_order f\nJOIN dim_product p ON f.product_id = p.product_id\nGROUP BY p.category\nORDER BY SUM(f.order_amount) DESC\nLIMIT 1 OFFSET 1;",
+    "error_detail": null
+  },
+  {
+    "id": "E092",
+    "category": "rank",
+    "query": "消费金额最高的客户是谁",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 7.9,
+    "generated_sql": "SELECT c.customer_name, SUM(f.order_amount) AS total_amount\nFROM fact_order f\nJOIN dim_customer c ON f.customer_id = c.customer_id\nGROUP BY c.customer_name\nORDER BY total_amount DESC\nLIMIT 1;",
+    "error_detail": null
+  },
+  {
+    "id": "E093",
+    "category": "rank",
+    "query": "销量最高的商品是什么",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 6.2,
+    "generated_sql": "SELECT p.product_name, SUM(f.order_quantity) AS total_quantity\nFROM fact_order f\nJOIN dim_product p ON f.product_id = p.product_id\nGROUP BY p.product_name\nORDER BY total_quantity DESC\nLIMIT 1",
+    "error_detail": null
+  },
+  {
+    "id": "E094",
+    "category": "rank",
+    "query": "销售额排名第二的品牌是哪个",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 6.8,
+    "generated_sql": "SELECT p.brand\nFROM fact_order f\nJOIN dim_product p ON f.product_id = p.product_id\nGROUP BY p.brand\nORDER BY SUM(f.order_amount) DESC\nLIMIT 1 OFFSET 1",
+    "error_detail": null
+  },
+  {
+    "id": "E095",
+    "category": "group_by",
+    "query": "各品类的平均订单金额分别是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 6.6,
+    "generated_sql": "SELECT \n    dp.category,\n    ROUND(AVG(fo.order_amount), 2) AS AOV\nFROM fact_order fo\nJOIN dim_product dp ON fo.product_id = dp.product_id\nGROUP BY dp.category\nORDER BY AOV DESC;",
+    "error_detail": null
+  },
+  {
+    "id": "E096",
+    "category": "group_by",
+    "query": "各会员等级的销量分别是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 5.1,
+    "generated_sql": "SELECT \n    d.member_level,\n    SUM(f.order_quantity) AS total_quantity\nFROM \n    fact_order f\nINNER JOIN \n    dim_customer d ON f.customer_id = d.customer_id\nGROUP BY \n    d.member_level\nORDER BY \n    total_quantity DESC",
+    "error_detail": null
+  },
+  {
+    "id": "E097",
+    "category": "group_by",
+    "query": "各品类在各季度的销售额分别是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 6.1,
+    "generated_sql": "SELECT \n    dp.category AS 品类,\n    dd.quarter AS 季度,\n    SUM(fo.order_amount) AS 销售额\nFROM fact_order fo\nJOIN dim_product dp ON fo.product_id = dp.product_id\nJOIN dim_date dd ON fo.date_id = dd.date_id\nGROUP BY dp.category, dd.quarter\nORDER BY dp.category, dd.quarter;",
+    "error_detail": null
+  },
+  {
+    "id": "E098",
+    "category": "group_by",
+    "query": "各省份各会员等级的订单数量分别是多少",
+    "verdict": "correct",
+    "correct_count": null,
+    "elapsed": 6.4,
+    "generated_sql": "SELECT \n    r.province,\n    c.member_level,\n    COUNT(f.order_id) AS order_count\nFROM fact_order f\nJOIN dim_region r ON f.region_id = r.region_id\nJOIN dim_customer c ON f.customer_id = c.customer_id\nGROUP BY r.province, c.member_level\nORDER BY r.province, c.member_level",
+    "error_detail": null
+  },
+  {
+    "id": "E099",
+    "category": "non_query",
+    "query": "帮我写一段Python代码",
+    "verdict": "classify_correct",
+    "correct_count": null,
+    "elapsed": 1.8,
+    "generated_sql": null,
+    "error_detail": null
+  },
+  {
+    "id": "E100",
+    "category": "non_query",
+    "query": "推荐一下附近好吃的餐厅",
+    "verdict": "classify_correct",
+    "correct_count": null,
+    "elapsed": 1.9,
+    "generated_sql": null,
+    "error_detail": null
+  },
+  {
+    "id": "E101",
+    "category": "non_query",
+    "query": "你会说英语吗",
+    "verdict": "classify_correct",
+    "correct_count": null,
+    "elapsed": 1.6,
+    "generated_sql": null,
+    "error_detail": null
+  },
+  {
+    "id": "E102",
+    "category": "non_query",
+    "query": "现在几点",
+    "verdict": "classify_correct",
+    "correct_count": null,
+    "elapsed": 1.7,
+    "generated_sql": null,
+    "error_detail": null
+  }
+]
