@@ -1,0 +1,606 @@
+# QueryForge 评估数据集
+# 判定标准:执行准确率(execution accuracy)——评估时黄金 SQL 与 Agent 生成 SQL 在同一 dw 库执行后比对结果集
+# category 取值: single_agg / time_filter / join / metric / share / rank / group_by / non_query
+# non_query 用例无需 expected_sql,期望行为是入口分类为 false 并走「回答问题」
+
+- id: E001
+  query: 一共有多少笔订单
+  category: single_agg
+  expected_sql: SELECT COUNT(order_id) AS order_count FROM fact_order
+  notes: 最基本计数
+
+- id: E002
+  query: 2025年1月份的销售额总和是多少
+  category: single_agg
+  expected_sql: SELECT SUM(order_amount) AS total_sales FROM fact_order WHERE date_id BETWEEN 20250101 AND 20250131
+  notes: 考察 date_id 为 yyyyMMdd 整数的范围过滤写法
+
+- id: E003
+  query: 平均每笔订单的金额是多少
+  category: single_agg
+  expected_sql: SELECT ROUND(AVG(order_amount), 2) AS avg_amount FROM fact_order
+  notes: 平均值聚合
+
+- id: E004
+  query: 所有订单的销量总和是多少
+  category: single_agg
+  expected_sql: SELECT SUM(order_quantity) AS total_quantity FROM fact_order
+  notes: 销量对应 order_quantity
+
+- id: E005
+  query: 金额最高的单笔订单是多少钱
+  category: single_agg
+  expected_sql: SELECT MAX(order_amount) AS max_amount FROM fact_order
+  notes: 最大值聚合
+
+- id: E006
+  query: 2025年2月份的GMV是多少
+  category: metric
+  expected_sql: SELECT SUM(order_amount) AS GMV FROM fact_order WHERE date_id BETWEEN 20250201 AND 20250228
+  notes: GMV=成交金额总和,2月28天
+
+- id: E007
+  query: 2025年1月份的成交总额是多少
+  category: metric
+  expected_sql: SELECT SUM(order_amount) AS GMV FROM fact_order WHERE date_id BETWEEN 20250101 AND 20250131
+  notes: 成交总额是GMV的别名
+
+- id: E008
+  query: 2025年第一季度的GMV是多少
+  category: time_filter
+  expected_sql: SELECT SUM(order_amount) AS GMV FROM fact_order WHERE date_id BETWEEN 20250101 AND 20250331
+  notes: 季度=1月1日到3月31日
+
+- id: E009
+  query: 2025年3月份的订单数量是多少
+  category: time_filter
+  expected_sql: SELECT COUNT(order_id) AS order_count FROM fact_order WHERE date_id BETWEEN 20250301 AND 20250331
+  notes: 月份范围过滤
+
+- id: E010
+  query: 2025年3月每天的销售额分别是多少
+  category: time_filter
+  expected_sql: SELECT date_id, SUM(order_amount) AS daily_sales FROM fact_order WHERE date_id BETWEEN 20250301 AND 20250331 GROUP BY date_id ORDER BY date_id
+  notes: 按天分组,31行结果
+
+- id: E011
+  query: 2025年1月份哪天卖得最好
+  category: rank
+  expected_sql: SELECT date_id, SUM(order_amount) AS daily_sales FROM fact_order WHERE date_id BETWEEN 20250101 AND 20250131 GROUP BY date_id ORDER BY daily_sales DESC LIMIT 1
+  notes: 分组+排序+取第一名
+
+- id: E012
+  query: 各品类的销售额分别是多少
+  category: join
+  expected_sql: SELECT p.category, SUM(o.order_amount) AS sales FROM fact_order o JOIN dim_product p ON o.product_id = p.product_id GROUP BY p.category ORDER BY sales DESC
+  notes: 事实表关联商品维度的品类
+
+- id: E013
+  query: 各省份的订单数量分别是多少
+  category: join
+  expected_sql: SELECT r.province, COUNT(o.order_id) AS order_count FROM fact_order o JOIN dim_region r ON o.region_id = r.region_id GROUP BY r.province ORDER BY order_count DESC
+  notes: 关联地区维度,订单数量=COUNT
+
+- id: E014
+  query: 华东大区的销售额是多少
+  category: join
+  expected_sql: SELECT SUM(o.order_amount) AS sales FROM fact_order o JOIN dim_region r ON o.region_id = r.region_id WHERE r.region_name = '华东' GROUP BY r.region_name
+  notes: 地区维度过滤(华东=上海+浙江)
+
+- id: E015
+  query: 各品牌的销量分别是多少
+  category: join
+  expected_sql: SELECT p.brand, SUM(o.order_quantity) AS quantity FROM fact_order o JOIN dim_product p ON o.product_id = p.product_id GROUP BY p.brand ORDER BY quantity DESC
+  notes: 销量=order_quantity求和
+
+- id: E016
+  query: 各品类2025年1月份的销售额占比是多少
+  category: share
+  expected_sql: SELECT p.category, ROUND(SUM(o.order_amount) * 100.0 / (SELECT SUM(order_amount) FROM fact_order WHERE date_id BETWEEN 20250101 AND 20250131), 2) AS share_percent FROM fact_order o JOIN dim_product p ON o.product_id = p.product_id WHERE o.date_id BETWEEN 20250101 AND 20250131 GROUP BY p.category ORDER BY share_percent DESC
+  notes: 子查询求分母的占比
+
+- id: E017
+  query: 各大区的销售额占比是多少
+  category: share
+  expected_sql: SELECT r.region_name, ROUND(SUM(o.order_amount) * 100.0 / (SELECT SUM(order_amount) FROM fact_order), 2) AS share_percent FROM fact_order o JOIN dim_region r ON o.region_id = r.region_id GROUP BY r.region_name ORDER BY share_percent DESC
+  notes: 全量占比
+
+- id: E018
+  query: 手机数码品类的销售额占总销售额的比例是多少
+  category: share
+  expected_sql: SELECT ROUND(SUM(CASE WHEN p.category = '手机数码' THEN o.order_amount ELSE 0 END) * 100.0 / SUM(o.order_amount), 2) AS share_percent FROM fact_order o JOIN dim_product p ON o.product_id = p.product_id
+  notes: 单品类占比,考察 CASE WHEN
+
+- id: E019
+  query: 卖得最好的品类是哪个
+  category: rank
+  expected_sql: SELECT p.category FROM fact_order o JOIN dim_product p ON o.product_id = p.product_id GROUP BY p.category ORDER BY SUM(o.order_amount) DESC LIMIT 1
+  notes: 品类销售额第一名,只输出问题要求的列
+
+- id: E020
+  query: 销售额最高的三个商品是什么
+  category: rank
+  expected_sql: SELECT p.product_name, SUM(o.order_amount) AS sales FROM fact_order o JOIN dim_product p ON o.product_id = p.product_id GROUP BY p.product_name ORDER BY sales DESC LIMIT 3
+  notes: TOP 3 商品
+
+- id: E021
+  query: 哪个省份的订单数量最多
+  category: rank
+  expected_sql: SELECT r.province FROM fact_order o JOIN dim_region r ON o.region_id = r.region_id GROUP BY r.province ORDER BY COUNT(o.order_id) DESC LIMIT 1
+  notes: 考察订单数量=COUNT 而非 SUM(quantity),只输出省份
+
+- id: E022
+  query: 销量最少的品牌是哪个
+  category: rank
+  expected_sql: SELECT p.brand FROM fact_order o JOIN dim_product p ON o.product_id = p.product_id GROUP BY p.brand ORDER BY SUM(o.order_quantity) ASC LIMIT 1
+  notes: 升序取最后一名,只输出品牌
+
+- id: E023
+  query: 各会员等级的订单数量分别是多少
+  category: group_by
+  expected_sql: SELECT c.member_level, COUNT(o.order_id) AS order_count FROM fact_order o JOIN dim_customer c ON o.customer_id = c.customer_id GROUP BY c.member_level ORDER BY order_count DESC
+  notes: 客户维度分组
+
+- id: E024
+  query: 男性和女性客户分别买了多少钱的东西
+  category: group_by
+  expected_sql: SELECT c.gender, SUM(o.order_amount) AS sales FROM fact_order o JOIN dim_customer c ON o.customer_id = c.customer_id GROUP BY c.gender
+  notes: 性别维度
+
+- id: E025
+  query: 2025年各个月的订单数量分别是多少
+  category: time_filter
+  expected_sql: SELECT d.month, COUNT(o.order_id) AS order_count FROM fact_order o JOIN dim_date d ON o.date_id = d.date_id WHERE d.year = 2025 GROUP BY d.month ORDER BY d.month
+  notes: 关联日期维度按月分组
+
+- id: E026
+  query: 每个省份的平均订单金额是多少
+  category: group_by
+  expected_sql: SELECT r.province, ROUND(AVG(o.order_amount), 2) AS avg_amount FROM fact_order o JOIN dim_region r ON o.region_id = r.region_id GROUP BY r.province ORDER BY avg_amount DESC
+  notes: 分组求平均
+
+- id: E027
+  query: 各品类各品牌的销售额分别是多少
+  category: group_by
+  expected_sql: SELECT p.category, p.brand, SUM(o.order_amount) AS sales FROM fact_order o JOIN dim_product p ON o.product_id = p.product_id GROUP BY p.category, p.brand ORDER BY p.category, sales DESC
+  notes: 二维分组
+
+- id: E028
+  query: 2025年2月和3月的销售额分别是多少
+  category: time_filter
+  expected_sql: SELECT d.month, SUM(o.order_amount) AS sales FROM fact_order o JOIN dim_date d ON o.date_id = d.date_id WHERE d.month IN (2, 3) GROUP BY d.month ORDER BY d.month
+  notes: 多月对比
+
+- id: E029
+  query: 所有订单的平均订单金额是多少(AOV)
+  category: metric
+  expected_sql: SELECT ROUND(AVG(order_amount), 2) AS AOV FROM fact_order
+  notes: AOV=成交金额平均值
+
+- id: E030
+  query: 2025年3月份的GMV是多少
+  category: metric
+  expected_sql: SELECT SUM(order_amount) AS GMV FROM fact_order WHERE date_id BETWEEN 20250301 AND 20250331
+  notes: 3月GMV
+
+- id: E031
+  query: 订单总额最高的月份是几月
+  category: rank
+  expected_sql: SELECT d.month, SUM(o.order_amount) AS sales FROM fact_order o JOIN dim_date d ON o.date_id = d.date_id GROUP BY d.month ORDER BY sales DESC LIMIT 1
+  notes: 月份销售第一名
+
+- id: E032
+  query: 广东和浙江两个省的订单数量分别是多少
+  category: group_by
+  expected_sql: SELECT r.province, COUNT(o.order_id) AS order_count FROM fact_order o JOIN dim_region r ON o.region_id = r.region_id WHERE r.province IN ('广东省', '浙江省') GROUP BY r.province ORDER BY order_count DESC
+  notes: 字段值过滤+分组
+
+- id: E033
+  query: 手机数码品类在2月份的GMV是多少
+  category: join
+  expected_sql: SELECT SUM(o.order_amount) AS GMV FROM fact_order o JOIN dim_product p ON o.product_id = p.product_id WHERE p.category = '手机数码' AND o.date_id BETWEEN 20250201 AND 20250228
+  notes: 品类+时间双重过滤
+
+- id: E034
+  query: 三星品牌的订单有多少笔
+  category: join
+  expected_sql: SELECT COUNT(o.order_id) AS order_count FROM fact_order o JOIN dim_product p ON o.product_id = p.product_id WHERE p.brand = '三星'
+  notes: 品牌过滤计数
+
+- id: E035
+  query: 你好
+  category: non_query
+  notes: 问候,应走回答问题
+
+- id: E036
+  query: 谢谢你的帮助
+  category: non_query
+  notes: 道谢,应走回答问题
+
+- id: E037
+  query: 你是谁
+  category: non_query
+  notes: 身份询问,应走回答问题
+
+- id: E038
+  query: 你能做什么
+  category: non_query
+  notes: 能力询问,应走回答问题
+
+- id: E039
+  query: 今天天气怎么样
+  category: non_query
+  notes: 与数据无关,应走回答问题
+
+- id: E040
+  query: 讲个笑话吧
+  category: non_query
+  notes: 闲聊,应走回答问题
+
+- id: E041
+  query: 什么是机器学习
+  category: non_query
+  notes: 百科问答,应走回答问题
+
+- id: E042
+  query: 再见
+  category: non_query
+  notes: 告别,应走回答问题
+
+# ================= 扩充批次:三表连接 / HAVING / 子查询 / 各类加固 =================
+
+- id: E043
+  query: 各会员等级的客户在手机数码品类的销售额分别是多少
+  category: multi_join
+  expected_sql: SELECT c.member_level, SUM(o.order_amount) AS sales FROM fact_order o JOIN dim_customer c ON o.customer_id = c.customer_id JOIN dim_product p ON o.product_id = p.product_id WHERE p.category = '手机数码' GROUP BY c.member_level ORDER BY sales DESC
+  notes: 事实表关联客户+商品两张维度表
+
+- id: E044
+  query: 广东省各品类的销售额分别是多少
+  category: multi_join
+  expected_sql: SELECT p.category, SUM(o.order_amount) AS sales FROM fact_order o JOIN dim_region r ON o.region_id = r.region_id JOIN dim_product p ON o.product_id = p.product_id WHERE r.province = '广东省' GROUP BY p.category ORDER BY sales DESC
+  notes: 地区+商品双维度过滤
+
+- id: E045
+  query: 各月份各大区的销售额分别是多少
+  category: multi_join
+  expected_sql: SELECT d.month, r.region_name, SUM(o.order_amount) AS sales FROM fact_order o JOIN dim_date d ON o.date_id = d.date_id JOIN dim_region r ON o.region_id = r.region_id GROUP BY d.month, r.region_name ORDER BY d.month, sales DESC
+  notes: 时间+地区三表连接
+
+- id: E046
+  query: 女性客户在2月份的销售额是多少
+  category: multi_join
+  expected_sql: SELECT SUM(o.order_amount) AS sales FROM fact_order o JOIN dim_customer c ON o.customer_id = c.customer_id JOIN dim_date d ON o.date_id = d.date_id WHERE c.gender = '女' AND d.month = 2 AND d.year = 2025
+  notes: 客户+时间双过滤
+
+- id: E047
+  query: 华东大区黄金会员的销售额是多少
+  category: multi_join
+  expected_sql: SELECT SUM(o.order_amount) AS sales FROM fact_order o JOIN dim_region r ON o.region_id = r.region_id JOIN dim_customer c ON o.customer_id = c.customer_id WHERE r.region_name = '华东' AND c.member_level = '黄金'
+  notes: 地区+客户双过滤
+
+- id: E048
+  query: 男性和女性客户在各品类的销售额分别是多少
+  category: multi_join
+  expected_sql: SELECT c.gender, p.category, SUM(o.order_amount) AS sales FROM fact_order o JOIN dim_customer c ON o.customer_id = c.customer_id JOIN dim_product p ON o.product_id = p.product_id GROUP BY c.gender, p.category ORDER BY c.gender, sales DESC
+  notes: 三维度分组
+
+- id: E049
+  query: 各品牌1月份的销售额分别是多少
+  category: multi_join
+  expected_sql: SELECT p.brand, SUM(o.order_amount) AS sales FROM fact_order o JOIN dim_product p ON o.product_id = p.product_id JOIN dim_date d ON o.date_id = d.date_id WHERE d.month = 1 AND d.year = 2025 GROUP BY p.brand ORDER BY sales DESC
+  notes: 品牌+时间维度
+
+- id: E050
+  query: 白银会员在2月份的订单有多少笔
+  category: multi_join
+  expected_sql: SELECT COUNT(o.order_id) AS order_count FROM fact_order o JOIN dim_customer c ON o.customer_id = c.customer_id JOIN dim_date d ON o.date_id = d.date_id WHERE c.member_level = '白银' AND d.month = 2
+  notes: 双维度过滤计数
+
+- id: E051
+  query: 各省份手机数码品类的订单数量分别是多少
+  category: multi_join
+  expected_sql: SELECT r.province, COUNT(o.order_id) AS order_count FROM fact_order o JOIN dim_region r ON o.region_id = r.region_id JOIN dim_product p ON o.product_id = p.product_id WHERE p.category = '手机数码' GROUP BY r.province ORDER BY order_count DESC
+  notes: 地区维度+品类过滤
+
+- id: E052
+  query: 各会员等级客户的平均订单金额分别是多少
+  category: multi_join
+  expected_sql: SELECT c.member_level, ROUND(AVG(o.order_amount), 2) AS avg_amount FROM fact_order o JOIN dim_customer c ON o.customer_id = c.customer_id GROUP BY c.member_level ORDER BY avg_amount DESC
+  notes: 客户维度+平均值
+
+- id: E053
+  query: 3月份各品类的销量分别是多少
+  category: multi_join
+  expected_sql: SELECT p.category, SUM(o.order_quantity) AS quantity FROM fact_order o JOIN dim_product p ON o.product_id = p.product_id JOIN dim_date d ON o.date_id = d.date_id WHERE d.month = 3 GROUP BY p.category ORDER BY quantity DESC
+  notes: 品类+时间维度
+
+- id: E054
+  query: 男性客户各品类的订单数量分别是多少
+  category: multi_join
+  expected_sql: SELECT p.category, COUNT(o.order_id) AS order_count FROM fact_order o JOIN dim_customer c ON o.customer_id = c.customer_id JOIN dim_product p ON o.product_id = p.product_id WHERE c.gender = '男' GROUP BY p.category ORDER BY order_count DESC
+  notes: 客户过滤+品类分组
+
+- id: E055
+  query: 销售额超过20000元的品牌有哪些
+  category: having
+  expected_sql: SELECT p.brand FROM fact_order o JOIN dim_product p ON o.product_id = p.product_id GROUP BY p.brand HAVING SUM(o.order_amount) > 20000 ORDER BY SUM(o.order_amount) DESC
+  notes: HAVING 过滤聚合结果,5行
+
+- id: E056
+  query: 销量超过50件的商品有哪些
+  category: having
+  expected_sql: SELECT p.product_name, SUM(o.order_quantity) AS quantity FROM fact_order o JOIN dim_product p ON o.product_id = p.product_id GROUP BY p.product_name HAVING SUM(o.order_quantity) > 50 ORDER BY quantity DESC
+  notes: HAVING 数量阈值,4行
+
+- id: E057
+  query: 订单数超过8笔的品牌有哪些
+  category: having
+  expected_sql: SELECT p.brand FROM fact_order o JOIN dim_product p ON o.product_id = p.product_id GROUP BY p.brand HAVING COUNT(o.order_id) > 8 ORDER BY COUNT(o.order_id) DESC
+  notes: HAVING 计数阈值(严格大于),4行
+
+- id: E058
+  query: 销售额超过30000元的品类有哪些
+  category: having
+  expected_sql: SELECT p.category FROM fact_order o JOIN dim_product p ON o.product_id = p.product_id GROUP BY p.category HAVING SUM(o.order_amount) > 30000 ORDER BY SUM(o.order_amount) DESC
+  notes: HAVING 金额阈值,2行
+
+- id: E059
+  query: 购买次数超过5次的客户有哪些
+  category: having
+  expected_sql: SELECT c.customer_name FROM fact_order o JOIN dim_customer c ON o.customer_id = c.customer_id GROUP BY c.customer_name HAVING COUNT(o.order_id) > 5 ORDER BY COUNT(o.order_id) DESC
+  notes: HAVING 客户频次阈值
+
+- id: E060
+  query: 销量大于15件的品类有哪些
+  category: having
+  expected_sql: SELECT p.category FROM fact_order o JOIN dim_product p ON o.product_id = p.product_id GROUP BY p.category HAVING SUM(o.order_quantity) > 15 ORDER BY SUM(o.order_quantity) DESC
+  notes: HAVING 品类数量阈值,3行
+
+- id: E061
+  query: 销售额超过15000元的品牌有多少个
+  category: having
+  expected_sql: SELECT COUNT(*) AS brand_count FROM (SELECT p.brand FROM fact_order o JOIN dim_product p ON o.product_id = p.product_id GROUP BY p.brand HAVING SUM(o.order_amount) > 15000) t
+  notes: 子查询+HAVING组合,5
+
+- id: E062
+  query: 单日订单达到2笔的日期有多少个
+  category: having
+  expected_sql: SELECT COUNT(*) AS day_count FROM (SELECT date_id FROM fact_order GROUP BY date_id HAVING COUNT(*) >= 2) t
+  notes: HAVING 计数后外层统计
+
+- id: E063
+  query: 销售额超过全品牌平均销售额的品牌有哪些
+  category: subquery
+  expected_sql: SELECT p.brand FROM fact_order o JOIN dim_product p ON o.product_id = p.product_id GROUP BY p.brand HAVING SUM(o.order_amount) > (SELECT AVG(s) FROM (SELECT SUM(o.order_amount) s FROM fact_order o JOIN dim_product p ON o.product_id = p.product_id GROUP BY p.brand) t) ORDER BY SUM(o.order_amount) DESC
+  notes: 子查询计算品牌均值,5行
+
+- id: E064
+  query: 订单金额高于平均订单金额的订单有多少笔
+  category: subquery
+  expected_sql: SELECT COUNT(*) AS order_count FROM fact_order WHERE order_amount > (SELECT AVG(order_amount) FROM fact_order)
+  notes: 标量子查询,35
+
+- id: E065
+  query: 购买过手机数码产品的客户有多少位
+  category: subquery
+  expected_sql: SELECT COUNT(DISTINCT customer_id) AS customer_count FROM fact_order WHERE product_id IN (SELECT product_id FROM dim_product WHERE category = '手机数码')
+  notes: IN 子查询,15
+
+- id: E066
+  query: 销售额最高的商品属于哪个品类
+  category: subquery
+  expected_sql: SELECT p.category FROM dim_product p JOIN (SELECT product_id, SUM(order_amount) s FROM fact_order GROUP BY product_id ORDER BY s DESC LIMIT 1) t ON p.product_id = t.product_id
+  notes: 子查询取第一名再回查维度
+
+- id: E067
+  query: 1月份和3月份都购买过的客户有多少位
+  category: subquery
+  expected_sql: SELECT COUNT(DISTINCT f1.customer_id) AS customer_count FROM fact_order f1 JOIN fact_order f2 ON f1.customer_id = f2.customer_id WHERE f1.date_id BETWEEN 20250101 AND 20250131 AND f2.date_id BETWEEN 20250301 AND 20250331
+  notes: 自连接交集,19
+
+- id: E068
+  query: 金额最高的订单(单笔金额并列最高)总共有多少笔
+  category: subquery
+  expected_sql: SELECT COUNT(*) AS order_count FROM fact_order WHERE order_amount = (SELECT MAX(order_amount) FROM fact_order)
+  notes: 标量子查询取极值计数,6
+
+- id: E069
+  query: 销售额超过全品类平均销售额的品类有哪些
+  category: subquery
+  expected_sql: SELECT p.category FROM fact_order o JOIN dim_product p ON o.product_id = p.product_id GROUP BY p.category HAVING SUM(o.order_amount) > (SELECT AVG(s) FROM (SELECT SUM(o.order_amount) s FROM fact_order o JOIN dim_product p ON o.product_id = p.product_id GROUP BY p.category) t) ORDER BY SUM(o.order_amount) DESC
+  notes: 品类均值子查询,2行
+
+- id: E070
+  query: 购买过三星产品的客户有多少位
+  category: subquery
+  expected_sql: SELECT COUNT(DISTINCT customer_id) AS customer_count FROM fact_order WHERE product_id IN (SELECT product_id FROM dim_product WHERE brand = '三星')
+  notes: 品牌IN子查询
+
+- id: E071
+  query: 订单金额高于平均值的订单占总订单的比例是多少
+  category: subquery
+  expected_sql: SELECT ROUND((SELECT COUNT(*) FROM fact_order WHERE order_amount > (SELECT AVG(order_amount) FROM fact_order)) * 100.0 / COUNT(*), 2) AS share_percent FROM fact_order
+  notes: 嵌套标量子查询算占比,30.43
+
+- id: E072
+  query: 平均订单金额最高的省份是哪个
+  category: subquery
+  expected_sql: SELECT r.province FROM fact_order o JOIN dim_region r ON o.region_id = r.region_id GROUP BY r.province ORDER BY AVG(o.order_amount) DESC LIMIT 1
+  notes: 分组平均取第一名,广东省
+
+- id: E073
+  query: 一共有多少位客户下过单
+  category: single_agg
+  expected_sql: SELECT COUNT(DISTINCT customer_id) AS customer_count FROM fact_order
+  notes: DISTINCT 计数,20
+
+- id: E074
+  query: 一共有多少种商品被购买过
+  category: single_agg
+  expected_sql: SELECT COUNT(DISTINCT product_id) AS product_count FROM fact_order
+  notes: 商品种类计数,15
+
+- id: E075
+  query: 2025年2月份的平均每日销售额是多少
+  category: single_agg
+  expected_sql: SELECT ROUND(SUM(order_amount) / 28, 2) AS avg_daily_sales FROM fact_order WHERE date_id BETWEEN 20250201 AND 20250228
+  notes: 总销售额除以天数,2857.46
+
+- id: E076
+  query: 2025年1月1日的销售额是多少
+  category: time_filter
+  expected_sql: SELECT SUM(order_amount) AS sales FROM fact_order WHERE date_id = 20250101
+  notes: 单日过滤,15998.0
+
+- id: E077
+  query: 2025年各季度的销售额分别是多少
+  category: time_filter
+  expected_sql: SELECT d.quarter, SUM(o.order_amount) AS sales FROM fact_order o JOIN dim_date d ON o.date_id = d.date_id WHERE d.year = 2025 GROUP BY d.quarter ORDER BY d.quarter
+  notes: 季度分组,Q1
+
+- id: E078
+  query: 2025年2月28日的订单数量是多少
+  category: time_filter
+  expected_sql: SELECT COUNT(order_id) AS order_count FROM fact_order WHERE date_id = 20250228
+  notes: 月末单日计数
+
+- id: E079
+  query: 2025年3月份的平均每日销售额是多少
+  category: time_filter
+  expected_sql: SELECT ROUND(SUM(order_amount) / 31, 2) AS avg_daily_sales FROM fact_order WHERE date_id BETWEEN 20250301 AND 20250331
+  notes: 月均日销,2907.1
+
+- id: E080
+  query: 各省份下单的客户数量分别是多少
+  category: join
+  expected_sql: SELECT r.province, COUNT(DISTINCT o.customer_id) AS customer_count FROM fact_order o JOIN dim_region r ON o.region_id = r.region_id GROUP BY r.province ORDER BY customer_count DESC
+  notes: DISTINCT 客户按省份,6行
+
+- id: E081
+  query: 各品牌的订单数量分别是多少
+  category: join
+  expected_sql: SELECT p.brand, COUNT(o.order_id) AS order_count FROM fact_order o JOIN dim_product p ON o.product_id = p.product_id GROUP BY p.brand ORDER BY order_count DESC
+  notes: 品牌计数,15行
+
+- id: E082
+  query: 每个品类各有多少种商品
+  category: join
+  expected_sql: SELECT category, COUNT(*) AS product_count FROM dim_product GROUP BY category ORDER BY product_count DESC
+  notes: 单维度表分组
+
+- id: E083
+  query: 食品饮料品类的销售额是多少
+  category: join
+  expected_sql: SELECT SUM(o.order_amount) AS sales FROM fact_order o JOIN dim_product p ON o.product_id = p.product_id WHERE p.category = '食品饮料'
+  notes: 品类过滤求和,2490.0
+
+- id: E084
+  query: 2025年1月份的AOV是多少
+  category: metric
+  expected_sql: SELECT ROUND(AVG(order_amount), 2) AS AOV FROM fact_order WHERE date_id BETWEEN 20250101 AND 20250131
+  notes: 1月平均订单金额,2725.76
+
+- id: E085
+  query: 2025年2月份的AOV是多少
+  category: metric
+  expected_sql: SELECT ROUND(AVG(order_amount), 2) AS AOV FROM fact_order WHERE date_id BETWEEN 20250201 AND 20250228
+  notes: 2月平均订单金额
+
+- id: E086
+  query: 3月份各品类的GMV分别是多少
+  category: metric
+  expected_sql: SELECT p.category, SUM(o.order_amount) AS GMV FROM fact_order o JOIN dim_product p ON o.product_id = p.product_id JOIN dim_date d ON o.date_id = d.date_id WHERE d.month = 3 GROUP BY p.category ORDER BY GMV DESC
+  notes: 月度品类GMV,6行
+
+- id: E087
+  query: 2025年第一季度的订单总额是多少
+  category: metric
+  expected_sql: SELECT SUM(order_amount) AS GMV FROM fact_order WHERE date_id BETWEEN 20250101 AND 20250331
+  notes: 季度订单总额,279159.5
+
+- id: E088
+  query: 各品牌的销售额占比是多少
+  category: share
+  expected_sql: SELECT p.brand, ROUND(SUM(o.order_amount) * 100.0 / (SELECT SUM(order_amount) FROM fact_order), 2) AS share_percent FROM fact_order o JOIN dim_product p ON o.product_id = p.product_id GROUP BY p.brand ORDER BY share_percent DESC
+  notes: 15行占比
+
+- id: E089
+  query: 各月份的销售额占比是多少
+  category: share
+  expected_sql: SELECT d.month, ROUND(SUM(o.order_amount) * 100.0 / (SELECT SUM(order_amount) FROM fact_order), 2) AS share_percent FROM fact_order o JOIN dim_date d ON o.date_id = d.date_id GROUP BY d.month ORDER BY d.month
+  notes: 月度占比,3行
+
+- id: E090
+  query: 各品类的销量占比是多少
+  category: share
+  expected_sql: SELECT p.category, ROUND(SUM(o.order_quantity) * 100.0 / (SELECT SUM(order_quantity) FROM fact_order), 2) AS share_percent FROM fact_order o JOIN dim_product p ON o.product_id = p.product_id GROUP BY p.category ORDER BY share_percent DESC
+  notes: 数量占比,6行
+
+- id: E091
+  query: 销售额排名第二的品类是哪个
+  category: rank
+  expected_sql: SELECT p.category FROM fact_order o JOIN dim_product p ON o.product_id = p.product_id GROUP BY p.category ORDER BY SUM(o.order_amount) DESC LIMIT 1 OFFSET 1
+  notes: 第二名,家用电器
+
+- id: E092
+  query: 消费金额最高的客户是谁
+  category: rank
+  expected_sql: SELECT c.customer_name FROM fact_order o JOIN dim_customer c ON o.customer_id = c.customer_id GROUP BY c.customer_name ORDER BY SUM(o.order_amount) DESC LIMIT 1
+  notes: 客户消费第一名,李伟
+
+- id: E093
+  query: 销量最高的商品是什么
+  category: rank
+  expected_sql: SELECT p.product_name FROM fact_order o JOIN dim_product p ON o.product_id = p.product_id GROUP BY p.product_name ORDER BY SUM(o.order_quantity) DESC LIMIT 1
+  notes: 商品销量第一名,蒙牛
+
+- id: E094
+  query: 销售额排名第二的品牌是哪个
+  category: rank
+  expected_sql: SELECT p.brand FROM fact_order o JOIN dim_product p ON o.product_id = p.product_id GROUP BY p.brand ORDER BY SUM(o.order_amount) DESC LIMIT 1 OFFSET 1
+  notes: 品牌第二名,三星
+
+- id: E095
+  query: 各品类的平均订单金额分别是多少
+  category: group_by
+  expected_sql: SELECT p.category, ROUND(AVG(o.order_amount), 2) AS avg_amount FROM fact_order o JOIN dim_product p ON o.product_id = p.product_id GROUP BY p.category ORDER BY avg_amount DESC
+  notes: 品类平均客单价,6行
+
+- id: E096
+  query: 各会员等级的销量分别是多少
+  category: group_by
+  expected_sql: SELECT c.member_level, SUM(o.order_quantity) AS quantity FROM fact_order o JOIN dim_customer c ON o.customer_id = c.customer_id GROUP BY c.member_level ORDER BY quantity DESC
+  notes: 会员等级销量
+
+- id: E097
+  query: 各品类在各季度的销售额分别是多少
+  category: group_by
+  expected_sql: SELECT p.category, d.quarter, SUM(o.order_amount) AS sales FROM fact_order o JOIN dim_product p ON o.product_id = p.product_id JOIN dim_date d ON o.date_id = d.date_id GROUP BY p.category, d.quarter ORDER BY p.category, d.quarter
+  notes: 品类×季度分组,6行
+
+- id: E098
+  query: 各省份各会员等级的订单数量分别是多少
+  category: group_by
+  expected_sql: SELECT r.province, c.member_level, COUNT(o.order_id) AS order_count FROM fact_order o JOIN dim_region r ON o.region_id = r.region_id JOIN dim_customer c ON o.customer_id = c.customer_id GROUP BY r.province, c.member_level ORDER BY r.province, order_count DESC
+  notes: 省份×会员等级二维分组
+
+- id: E099
+  query: 帮我写一段Python代码
+  category: non_query
+  notes: 编程请求,应走回答问题
+
+- id: E100
+  query: 推荐一下附近好吃的餐厅
+  category: non_query
+  notes: 与数据无关,应走回答问题
+
+- id: E101
+  query: 你会说英语吗
+  category: non_query
+  notes: 能力闲聊,应走回答问题
+
+- id: E102
+  query: 现在几点
+  category: non_query
+  notes: 与数据无关,应走回答问题
