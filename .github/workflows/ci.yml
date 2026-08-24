@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          # conf/app_config.yaml 被 .gitignore 忽略,CI 用模板生成(占位 api_key,
+          # 单测不调用 LLM,仅用于模块加载)
+          cp conf/app_config.yaml.example conf/app_config.yaml
+          pip install ".[dev]"
+
+      - name: 运行单元测试
+        run: pytest tests/ -v
