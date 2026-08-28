@@ -1,3 +1,5 @@
+from datetime import date, datetime
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import text
@@ -27,7 +29,18 @@ class DWMySQLRepository:
             limit {limit}
         """)
         result = await self.dw_session.execute(sql)
-        return [row.column_value for row in result.fetchall()]
+        return [self._to_json_compatible(row.column_value) for row in result.fetchall()]
+
+    @staticmethod
+    def _to_json_compatible(value: Any) -> Any:
+        """将元数据样例值转换成可写入MySQL JSON/Qdrant/ES的基础类型。"""
+        if isinstance(value, Decimal):
+            return float(value)
+        if isinstance(value, (date, datetime)):
+            return value.isoformat()
+        if isinstance(value, bytes):
+            return value.decode("utf-8", errors="replace")
+        return value
 
     async def get_db_info(self) -> dict[str, str]:
         """

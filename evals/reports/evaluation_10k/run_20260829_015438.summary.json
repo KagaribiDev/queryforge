@@ -1,0 +1,31 @@
+{
+  "generated_at": "2026-08-29T01:54:50.258538",
+  "requested_count": 1,
+  "completed_count": 1,
+  "seed": 20260829,
+  "overall_pass_rate": 1.0,
+  "query_execution_accuracy": 1.0,
+  "non_query_accuracy": 0.0,
+  "safe_fallback_rate": 0.0,
+  "verdicts": {
+    "correct": 1
+  },
+  "by_category": {
+    "having": {
+      "total": 1,
+      "passed": 1,
+      "accuracy": 1.0,
+      "verdicts": {
+        "correct": 1
+      }
+    }
+  },
+  "latency_seconds": {
+    "mean": 7.375,
+    "p50": 7.375,
+    "p95": 7.375,
+    "p99": 7.375
+  },
+  "correction_trigger_rate": 0.0,
+  "retried_cases": 0
+}

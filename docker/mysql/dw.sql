@@ -1,20 +1,36 @@
 SET NAMES utf8mb4;
 
--- 与 conf/app_config.yaml 保持一致：确保 queryforge 用户在初始化后可直接登录
 CREATE USER IF NOT EXISTS 'queryforge'@'%' IDENTIFIED BY 'QueryForge.123';
 CREATE DATABASE IF NOT EXISTS dw DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+CREATE DATABASE IF NOT EXISTS meta DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 GRANT ALL PRIVILEGES ON dw.* TO 'queryforge'@'%';
+GRANT ALL PRIVILEGES ON meta.* TO 'queryforge'@'%';
 USE dw;
 
-
+-- 事实表依赖四张维度表，重复初始化时必须先删除事实表。
+DROP TABLE IF EXISTS fact_order;
 DROP TABLE IF EXISTS dim_region;
+DROP TABLE IF EXISTS dim_customer;
+DROP TABLE IF EXISTS dim_product;
+DROP TABLE IF EXISTS dim_date;
+
+-- 十进制种子表用于构造1~100000的序列，不依赖存储过程或递归深度配置。
+-- 这里不能使用TEMPORARY TABLE：MySQL不允许一条查询用不同别名多次引用同一临时表。
+DROP TABLE IF EXISTS seed_digit;
+CREATE TABLE seed_digit (digit TINYINT PRIMARY KEY);
+INSERT INTO seed_digit VALUES (0), (1), (2), (3), (4), (5), (6), (7), (8), (9);
+
+
+-- 地区维度：31个省级行政区，region_name采用常见七大地理分区口径。
 CREATE TABLE dim_region
 (
     region_id   VARCHAR(20) PRIMARY KEY,
-    province    VARCHAR(50),
-    region_name VARCHAR(50),
-    country     VARCHAR(50)
-);
+    province    VARCHAR(50) NOT NULL,
+    region_name VARCHAR(50) NOT NULL,
+    country     VARCHAR(50) NOT NULL,
+    UNIQUE KEY uk_region_province (province),
+    KEY idx_region_name (region_name)
+) ENGINE = InnoDB;
 
 INSERT INTO dim_region (region_id, province, region_name, country)
 VALUES ('R001', '广东省', '华南', '中国'),
@@ -22,299 +38,240 @@ VALUES ('R001', '广东省', '华南', '中国'),
        ('R003', '四川省', '西南', '中国'),
        ('R004', '北京市', '华北', '中国'),
        ('R005', '上海市', '华东', '中国'),
-       ('R006', '湖北省', '华中', '中国');
+       ('R006', '湖北省', '华中', '中国'),
+       ('R007', '江苏省', '华东', '中国'),
+       ('R008', '山东省', '华东', '中国'),
+       ('R009', '福建省', '华东', '中国'),
+       ('R010', '安徽省', '华东', '中国'),
+       ('R011', '江西省', '华东', '中国'),
+       ('R012', '天津市', '华北', '中国'),
+       ('R013', '河北省', '华北', '中国'),
+       ('R014', '山西省', '华北', '中国'),
+       ('R015', '内蒙古自治区', '华北', '中国'),
+       ('R016', '河南省', '华中', '中国'),
+       ('R017', '湖南省', '华中', '中国'),
+       ('R018', '广西壮族自治区', '华南', '中国'),
+       ('R019', '海南省', '华南', '中国'),
+       ('R020', '重庆市', '西南', '中国'),
+       ('R021', '贵州省', '西南', '中国'),
+       ('R022', '云南省', '西南', '中国'),
+       ('R023', '西藏自治区', '西南', '中国'),
+       ('R024', '辽宁省', '东北', '中国'),
+       ('R025', '吉林省', '东北', '中国'),
+       ('R026', '黑龙江省', '东北', '中国'),
+       ('R027', '陕西省', '西北', '中国'),
+       ('R028', '甘肃省', '西北', '中国'),
+       ('R029', '青海省', '西北', '中国'),
+       ('R030', '宁夏回族自治区', '西北', '中国'),
+       ('R031', '新疆维吾尔自治区', '西北', '中国');
 
 
-DROP TABLE IF EXISTS dim_customer;
+-- 客户维度：2000名客户；性别与四种会员等级采用独立哈希近似均匀分布。
 CREATE TABLE dim_customer
 (
     customer_id   VARCHAR(20) PRIMARY KEY,
-    customer_name VARCHAR(50),
-    gender        VARCHAR(10),
-    member_level  VARCHAR(20)
-);
+    customer_name VARCHAR(50) NOT NULL,
+    gender        VARCHAR(10) NOT NULL,
+    member_level  VARCHAR(20) NOT NULL,
+    KEY idx_customer_gender (gender),
+    KEY idx_customer_member_level (member_level)
+) ENGINE = InnoDB;
 
 INSERT INTO dim_customer (customer_id, customer_name, gender, member_level)
-VALUES ('C001', '李伟', '男', '黄金'),
-       ('C002', '王芳', '女', '白银'),
-       ('C003', '张敏', '女', '黄金'),
-       ('C004', '刘洋', '男', '青铜'),
-       ('C005', '陈静', '女', '铂金'),
-       ('C006', '赵磊', '男', '白银'),
-       ('C007', '黄秀英', '女', '青铜'),
-       ('C008', '吴斌', '男', '黄金'),
-       ('C009', '周燕', '女', '铂金'),
-       ('C010', '徐浩', '男', '白银'),
-       ('C011', '孙丽', '女', '黄金'),
-       ('C012', '马强', '男', '青铜'),
-       ('C013', '朱玲', '女', '白银'),
-       ('C014', '胡杰', '男', '黄金'),
-       ('C015', '高梅', '女', '铂金'),
-       ('C016', '林峰', '男', '青铜'),
-       ('C017', '何娜', '女', '白银'),
-       ('C018', '郭涛', '男', '黄金'),
-       ('C019', '邓慧', '女', '青铜'),
-       ('C020', '曹瑞', '男', '铂金');
+SELECT CONCAT('C', LPAD(n, 4, '0')),
+       CONCAT(
+           ELT(MOD(CRC32(CONCAT(n, ':surname')), 20) + 1,
+               '王', '李', '张', '刘', '陈', '杨', '黄', '赵', '周', '吴',
+               '徐', '孙', '胡', '朱', '高', '林', '何', '郭', '马', '罗'),
+           ELT(MOD(CRC32(CONCAT(n, ':given_name')), 20) + 1,
+               '晨', '宇', '欣', '怡', '浩', '婷', '博', '雪', '杰', '敏',
+               '磊', '静', '睿', '娜', '航', '琪', '峰', '琳', '涛', '悦'),
+           LPAD(n, 4, '0')
+       ),
+       IF(MOD(CRC32(CONCAT(n, ':gender')), 2) = 0, '女', '男'),
+       ELT(MOD(CRC32(CONCAT(n, ':member_level')), 4) + 1, '青铜', '白银', '黄金', '铂金')
+FROM (
+    SELECT ones.digit + tens.digit * 10 + hundreds.digit * 100 + thousands.digit * 1000 + 1 AS n
+    FROM seed_digit ones
+    CROSS JOIN seed_digit tens
+    CROSS JOIN seed_digit hundreds
+    CROSS JOIN seed_digit thousands
+) sequence_customer
+WHERE n <= 2000;
 
 
-
-DROP TABLE IF EXISTS dim_product;
+-- 商品维度：200个商品，品类、品牌和价格分别使用不同哈希盐值随机生成。
 CREATE TABLE dim_product
 (
     product_id   VARCHAR(20) PRIMARY KEY,
-    product_name VARCHAR(200),
-    category     VARCHAR(50),
-    brand        VARCHAR(50)
-);
+    product_name VARCHAR(200) NOT NULL,
+    category     VARCHAR(50) NOT NULL,
+    brand        VARCHAR(50) NOT NULL,
+    KEY idx_product_category (category),
+    KEY idx_product_brand (brand)
+) ENGINE = InnoDB;
 
 INSERT INTO dim_product (product_id, product_name, category, brand)
-VALUES ('P001', 'iPhone 15 Pro', '手机数码', '苹果'),
-       ('P002', 'Galaxy S24 Ultra', '手机数码', '三星'),
-       ('P003', 'Mate 60 Pro', '手机数码', '华为'),
-       ('P004', '戴森 V15 吸尘器', '家用电器', '戴森'),
-       ('P005', '美的空调 KFR-35GW', '家用电器', '美的'),
-       ('P006', '耐克 Air Max 270 运动鞋', '鞋靴', '耐克'),
-       ('P007', '阿迪达斯 Ultraboost 跑鞋', '鞋靴', '阿迪达斯'),
-       ('P008', '优衣库 Heattech 保暖夹克', '服饰', '优衣库'),
-       ('P009', '李维斯 501 牛仔裤', '服饰', '李维斯'),
-       ('P010', '雀巢金牌速溶咖啡', '食品饮料', '雀巢'),
-       ('P011', '蒙牛纯牛奶 250ml*12', '食品饮料', '蒙牛'),
-       ('P012', '乐事原味薯片 150g', '休闲零食', '乐事'),
-       ('P013', '奥利奥巧克力夹心饼干', '休闲零食', '奥利奥'),
-       ('P014', 'Kindle Paperwhite 电子书', '手机数码', '亚马逊'),
-       ('P015', 'Instant Pot 多功能电压力锅', '家用电器', 'Instant Pot');
+SELECT CONCAT('P', LPAD(n, 3, '0')),
+       CONCAT(brand, ' ', product_kind, ' ', LPAD(n, 3, '0')),
+       category,
+       brand
+FROM (
+    SELECT n,
+           category,
+           CASE category
+               WHEN '手机数码' THEN ELT(MOD(CRC32(CONCAT(n, ':brand')), 6) + 1, '苹果', '三星', '华为', '小米', '荣耀', 'OPPO')
+               WHEN '家用电器' THEN ELT(MOD(CRC32(CONCAT(n, ':brand')), 6) + 1, '美的', '海尔', '格力', '苏泊尔', '戴森', '小熊')
+               WHEN '鞋靴' THEN ELT(MOD(CRC32(CONCAT(n, ':brand')), 6) + 1, '耐克', '阿迪达斯', '安踏', '李宁', '特步', '彪马')
+               WHEN '服饰' THEN ELT(MOD(CRC32(CONCAT(n, ':brand')), 6) + 1, '优衣库', '李维斯', '太平鸟', '森马', '海澜之家', '蕉内')
+               WHEN '食品饮料' THEN ELT(MOD(CRC32(CONCAT(n, ':brand')), 6) + 1, '雀巢', '蒙牛', '伊利', '农夫山泉', '元气森林', '统一')
+               ELSE ELT(MOD(CRC32(CONCAT(n, ':brand')), 6) + 1, '乐事', '奥利奥', '三只松鼠', '良品铺子', '洽洽', '旺旺')
+           END AS brand,
+           CASE category
+               WHEN '手机数码' THEN '智能设备'
+               WHEN '家用电器' THEN '品质家电'
+               WHEN '鞋靴' THEN '运动鞋'
+               WHEN '服饰' THEN '经典服饰'
+               WHEN '食品饮料' THEN '营养饮品'
+               ELSE '休闲零食'
+           END AS product_kind
+    FROM (
+        SELECT n, ELT(MOD(CRC32(CONCAT(n, ':category')), 6) + 1,
+                      '手机数码', '家用电器', '鞋靴', '服饰', '食品饮料', '休闲零食') AS category
+        FROM (
+            SELECT ones.digit + tens.digit * 10 + hundreds.digit * 100 + 1 AS n
+            FROM seed_digit ones
+            CROSS JOIN seed_digit tens
+            CROSS JOIN seed_digit hundreds
+        ) product_sequence
+        WHERE n <= 200
+    ) product_category
+) product_detail;
 
 
-
-DROP TABLE IF EXISTS dim_date;
+-- 日期维度：2025全年365天。
 CREATE TABLE dim_date
 (
-    date_id INT PRIMARY KEY,
-    year    INT,
-    quarter VARCHAR(2),
-    month   INT,
-    day     INT
-);
+    date_id   INT PRIMARY KEY,
+    `year`    INT NOT NULL,
+    quarter   VARCHAR(2) NOT NULL,
+    `month`   INT NOT NULL,
+    `day`     INT NOT NULL,
+    full_date DATE NOT NULL,
+    UNIQUE KEY uk_date_full_date (full_date),
+    KEY idx_date_year_month (`year`, `month`),
+    KEY idx_date_year_quarter (`year`, quarter)
+) ENGINE = InnoDB;
 
-INSERT INTO dim_date (date_id, year, quarter, month, day)
-VALUES (20250101, 2025, 'Q1', 1, 1),
-       (20250102, 2025, 'Q1', 1, 2),
-       (20250103, 2025, 'Q1', 1, 3),
-       (20250104, 2025, 'Q1', 1, 4),
-       (20250105, 2025, 'Q1', 1, 5),
-       (20250106, 2025, 'Q1', 1, 6),
-       (20250107, 2025, 'Q1', 1, 7),
-       (20250108, 2025, 'Q1', 1, 8),
-       (20250109, 2025, 'Q1', 1, 9),
-       (20250110, 2025, 'Q1', 1, 10),
-       (20250111, 2025, 'Q1', 1, 11),
-       (20250112, 2025, 'Q1', 1, 12),
-       (20250113, 2025, 'Q1', 1, 13),
-       (20250114, 2025, 'Q1', 1, 14),
-       (20250115, 2025, 'Q1', 1, 15),
-       (20250116, 2025, 'Q1', 1, 16),
-       (20250117, 2025, 'Q1', 1, 17),
-       (20250118, 2025, 'Q1', 1, 18),
-       (20250119, 2025, 'Q1', 1, 19),
-       (20250120, 2025, 'Q1', 1, 20),
-       (20250121, 2025, 'Q1', 1, 21),
-       (20250122, 2025, 'Q1', 1, 22),
-       (20250123, 2025, 'Q1', 1, 23),
-       (20250124, 2025, 'Q1', 1, 24),
-       (20250125, 2025, 'Q1', 1, 25),
-       (20250126, 2025, 'Q1', 1, 26),
-       (20250127, 2025, 'Q1', 1, 27),
-       (20250128, 2025, 'Q1', 1, 28),
-       (20250129, 2025, 'Q1', 1, 29),
-       (20250130, 2025, 'Q1', 1, 30),
-       (20250131, 2025, 'Q1', 1, 31),
-       (20250201, 2025, 'Q1', 2, 1),
-       (20250202, 2025, 'Q1', 2, 2),
-       (20250203, 2025, 'Q1', 2, 3),
-       (20250204, 2025, 'Q1', 2, 4),
-       (20250205, 2025, 'Q1', 2, 5),
-       (20250206, 2025, 'Q1', 2, 6),
-       (20250207, 2025, 'Q1', 2, 7),
-       (20250208, 2025, 'Q1', 2, 8),
-       (20250209, 2025, 'Q1', 2, 9),
-       (20250210, 2025, 'Q1', 2, 10),
-       (20250211, 2025, 'Q1', 2, 11),
-       (20250212, 2025, 'Q1', 2, 12),
-       (20250213, 2025, 'Q1', 2, 13),
-       (20250214, 2025, 'Q1', 2, 14),
-       (20250215, 2025, 'Q1', 2, 15),
-       (20250216, 2025, 'Q1', 2, 16),
-       (20250217, 2025, 'Q1', 2, 17),
-       (20250218, 2025, 'Q1', 2, 18),
-       (20250219, 2025, 'Q1', 2, 19),
-       (20250220, 2025, 'Q1', 2, 20),
-       (20250221, 2025, 'Q1', 2, 21),
-       (20250222, 2025, 'Q1', 2, 22),
-       (20250223, 2025, 'Q1', 2, 23),
-       (20250224, 2025, 'Q1', 2, 24),
-       (20250225, 2025, 'Q1', 2, 25),
-       (20250226, 2025, 'Q1', 2, 26),
-       (20250227, 2025, 'Q1', 2, 27),
-       (20250228, 2025, 'Q1', 2, 28),
-       (20250301, 2025, 'Q1', 3, 1),
-       (20250302, 2025, 'Q1', 3, 2),
-       (20250303, 2025, 'Q1', 3, 3),
-       (20250304, 2025, 'Q1', 3, 4),
-       (20250305, 2025, 'Q1', 3, 5),
-       (20250306, 2025, 'Q1', 3, 6),
-       (20250307, 2025, 'Q1', 3, 7),
-       (20250308, 2025, 'Q1', 3, 8),
-       (20250309, 2025, 'Q1', 3, 9),
-       (20250310, 2025, 'Q1', 3, 10),
-       (20250311, 2025, 'Q1', 3, 11),
-       (20250312, 2025, 'Q1', 3, 12),
-       (20250313, 2025, 'Q1', 3, 13),
-       (20250314, 2025, 'Q1', 3, 14),
-       (20250315, 2025, 'Q1', 3, 15),
-       (20250316, 2025, 'Q1', 3, 16),
-       (20250317, 2025, 'Q1', 3, 17),
-       (20250318, 2025, 'Q1', 3, 18),
-       (20250319, 2025, 'Q1', 3, 19),
-       (20250320, 2025, 'Q1', 3, 20),
-       (20250321, 2025, 'Q1', 3, 21),
-       (20250322, 2025, 'Q1', 3, 22),
-       (20250323, 2025, 'Q1', 3, 23),
-       (20250324, 2025, 'Q1', 3, 24),
-       (20250325, 2025, 'Q1', 3, 25),
-       (20250326, 2025, 'Q1', 3, 26),
-       (20250327, 2025, 'Q1', 3, 27),
-       (20250328, 2025, 'Q1', 3, 28),
-       (20250329, 2025, 'Q1', 3, 29),
-       (20250330, 2025, 'Q1', 3, 30),
-       (20250331, 2025, 'Q1', 3, 31);
+INSERT INTO dim_date (date_id, `year`, quarter, `month`, `day`, full_date)
+SELECT CAST(DATE_FORMAT(full_date, '%Y%m%d') AS UNSIGNED),
+       YEAR(full_date), CONCAT('Q', QUARTER(full_date)), MONTH(full_date), DAY(full_date), full_date
+FROM (
+    SELECT DATE_ADD('2025-01-01', INTERVAL n DAY) AS full_date
+    FROM (
+        SELECT ones.digit + tens.digit * 10 + hundreds.digit * 100 AS n
+        FROM seed_digit ones
+        CROSS JOIN seed_digit tens
+        CROSS JOIN seed_digit hundreds
+    ) sequence_date
+    WHERE n < 365
+) dates;
 
 
-
-DROP TABLE IF EXISTS fact_order;
+-- 订单事实表：四个维度键均有真实外键约束，并针对常用联查建立索引。
 CREATE TABLE fact_order
 (
     order_id       VARCHAR(30) PRIMARY KEY,
-    customer_id    VARCHAR(20),
-    product_id     VARCHAR(20),
-    date_id        INT,
-    region_id      VARCHAR(20),
-    order_quantity INT,
-    order_amount   FLOAT
-);
+    customer_id    VARCHAR(20) NOT NULL,
+    product_id     VARCHAR(20) NOT NULL,
+    date_id        INT NOT NULL,
+    region_id      VARCHAR(20) NOT NULL,
+    order_quantity INT NOT NULL,
+    order_amount   DECIMAL(12, 2) NOT NULL,
+    CONSTRAINT chk_order_quantity CHECK (order_quantity BETWEEN 1 AND 5),
+    CONSTRAINT chk_order_amount CHECK (order_amount >= 0),
+    CONSTRAINT fk_order_customer FOREIGN KEY (customer_id) REFERENCES dim_customer (customer_id),
+    CONSTRAINT fk_order_product FOREIGN KEY (product_id) REFERENCES dim_product (product_id),
+    CONSTRAINT fk_order_date FOREIGN KEY (date_id) REFERENCES dim_date (date_id),
+    CONSTRAINT fk_order_region FOREIGN KEY (region_id) REFERENCES dim_region (region_id),
+    KEY idx_order_customer (customer_id),
+    KEY idx_order_product (product_id),
+    KEY idx_order_date (date_id),
+    KEY idx_order_region (region_id),
+    KEY idx_order_date_product (date_id, product_id),
+    KEY idx_order_date_region (date_id, region_id),
+    KEY idx_order_customer_date (customer_id, date_id)
+) ENGINE = InnoDB;
 
-INSERT INTO fact_order (order_id, customer_id, product_id, date_id, region_id, order_quantity, order_amount)
-VALUES ('ORD20250101001', 'C001', 'P001', 20250101, 'R001', 1, 8999.00),
-       ('ORD20250101002', 'C005', 'P003', 20250101, 'R005', 1, 6999.00),
-       ('ORD20250102001', 'C003', 'P010', 20250102, 'R002', 5, 125.00),
-       ('ORD20250102002', 'C008', 'P006', 20250102, 'R004', 1, 899.00),
-       ('ORD20250103001', 'C012', 'P011', 20250103, 'R003', 12, 60.00),
-       ('ORD20250103002', 'C015', 'P014', 20250103, 'R005', 1, 1399.00),
-       ('ORD20250104001', 'C002', 'P012', 20250104, 'R001', 8, 40.00),
-       ('ORD20250105001', 'C007', 'P008', 20250105, 'R006', 2, 299.00),
-       ('ORD20250106001', 'C010', 'P002', 20250106, 'R002', 1, 9499.00),
-       ('ORD20250107001', 'C019', 'P013', 20250107, 'R003', 10, 35.00),
-       ('ORD20250108001', 'C004', 'P005', 20250108, 'R001', 1, 3200.00),
-       ('ORD20250109001', 'C011', 'P009', 20250109, 'R004', 1, 599.00),
-       ('ORD20250110001', 'C006', 'P007', 20250110, 'R005', 1, 1299.00),
-       ('ORD20250111001', 'C013', 'P004', 20250111, 'R002', 1, 5499.00),
-       ('ORD20250112001', 'C017', 'P015', 20250112, 'R006', 1, 899.00),
-       ('ORD20250113001', 'C020', 'P001', 20250113, 'R005', 1, 8999.00),
-       ('ORD20250114001', 'C009', 'P010', 20250114, 'R004', 3, 75.00),
-       ('ORD20250115001', 'C014', 'P003', 20250115, 'R001', 1, 6999.00),
-       ('ORD20250116001', 'C001', 'P012', 20250116, 'R001', 6, 30.00),
-       ('ORD20250117001', 'C005', 'P006', 20250117, 'R005', 1, 899.00),
-       ('ORD20250118001', 'C003', 'P011', 20250118, 'R002', 10, 50.00),
-       ('ORD20250119001', 'C008', 'P014', 20250119, 'R004', 1, 1399.00),
-       ('ORD20250120001', 'C012', 'P008', 20250120, 'R003', 1, 199.00),
-       ('ORD20250121001', 'C015', 'P002', 20250121, 'R005', 1, 9499.00),
-       ('ORD20250122001', 'C002', 'P013', 20250122, 'R001', 12, 42.00),
-       ('ORD20250123001', 'C007', 'P005', 20250123, 'R006', 1, 3200.00),
-       ('ORD20250124001', 'C010', 'P009', 20250124, 'R002', 2, 1198.00),
-       ('ORD20250125001', 'C019', 'P007', 20250125, 'R003', 1, 1299.00),
-       ('ORD20250126001', 'C004', 'P004', 20250126, 'R001', 1, 5499.00),
-       ('ORD20250127001', 'C011', 'P015', 20250127, 'R004', 1, 899.00),
-       ('ORD20250128001', 'C006', 'P001', 20250128, 'R005', 1, 8999.00),
-       ('ORD20250129001', 'C013', 'P010', 20250129, 'R002', 4, 100.00),
-       ('ORD20250130001', 'C017', 'P003', 20250130, 'R006', 1, 6999.00),
-       ('ORD20250131001', 'C020', 'P012', 20250131, 'R005', 7, 35.00),
-       ('ORD20250201001', 'C009', 'P011', 20250201, 'R004', 8, 40.00),
-       ('ORD20250202001', 'C014', 'P006', 20250202, 'R001', 1, 899.00),
-       ('ORD20250203001', 'C001', 'P014', 20250203, 'R001', 1, 1399.00),
-       ('ORD20250204001', 'C005', 'P008', 20250204, 'R005', 1, 199.00),
-       ('ORD20250205001', 'C003', 'P002', 20250205, 'R002', 1, 9499.00),
-       ('ORD20250206001', 'C008', 'P013', 20250206, 'R004', 9, 31.50),
-       ('ORD20250207001', 'C012', 'P005', 20250207, 'R003', 1, 3200.00),
-       ('ORD20250208001', 'C015', 'P009', 20250208, 'R005', 1, 599.00),
-       ('ORD20250209001', 'C002', 'P007', 20250209, 'R001', 1, 1299.00),
-       ('ORD20250210001', 'C007', 'P004', 20250210, 'R006', 1, 5499.00),
-       ('ORD20250211001', 'C010', 'P015', 20250211, 'R002', 1, 899.00),
-       ('ORD20250212001', 'C019', 'P001', 20250212, 'R003', 1, 8999.00),
-       ('ORD20250213001', 'C004', 'P010', 20250213, 'R001', 6, 150.00),
-       ('ORD20250214001', 'C011', 'P003', 20250214, 'R004', 1, 6999.00),
-       ('ORD20250215001', 'C006', 'P012', 20250215, 'R005', 10, 50.00),
-       ('ORD20250216001', 'C013', 'P011', 20250216, 'R002', 15, 75.00),
-       ('ORD20250217001', 'C017', 'P006', 20250217, 'R006', 1, 899.00),
-       ('ORD20250218001', 'C020', 'P014', 20250218, 'R005', 1, 1399.00),
-       ('ORD20250219001', 'C009', 'P008', 20250219, 'R004', 2, 398.00),
-       ('ORD20250220001', 'C014', 'P002', 20250220, 'R001', 1, 9499.00),
-       ('ORD20250221001', 'C001', 'P013', 20250221, 'R001', 11, 38.50),
-       ('ORD20250222001', 'C005', 'P005', 20250222, 'R005', 1, 3200.00),
-       ('ORD20250223001', 'C003', 'P009', 20250223, 'R002', 1, 599.00),
-       ('ORD20250224001', 'C008', 'P007', 20250224, 'R004', 1, 1299.00),
-       ('ORD20250225001', 'C012', 'P004', 20250225, 'R003', 1, 5499.00),
-       ('ORD20250226001', 'C015', 'P015', 20250226, 'R005', 1, 899.00),
-       ('ORD20250227001', 'C002', 'P001', 20250227, 'R001', 1, 8999.00),
-       ('ORD20250228001', 'C007', 'P010', 20250228, 'R006', 5, 125.00),
-       ('ORD20250301001', 'C010', 'P003', 20250301, 'R002', 1, 6999.00),
-       ('ORD20250302001', 'C019', 'P012', 20250302, 'R003', 9, 45.00),
-       ('ORD20250303001', 'C004', 'P011', 20250303, 'R001', 10, 50.00),
-       ('ORD20250304001', 'C011', 'P006', 20250304, 'R004', 1, 899.00),
-       ('ORD20250305001', 'C006', 'P014', 20250305, 'R005', 1, 1399.00),
-       ('ORD20250306001', 'C013', 'P008', 20250306, 'R002', 1, 199.00),
-       ('ORD20250307001', 'C017', 'P002', 20250307, 'R006', 1, 9499.00),
-       ('ORD20250308001', 'C020', 'P013', 20250308, 'R005', 14, 49.00),
-       ('ORD20250309001', 'C009', 'P005', 20250309, 'R004', 1, 3200.00),
-       ('ORD20250310001', 'C014', 'P009', 20250310, 'R001', 1, 599.00),
-       ('ORD20250311001', 'C001', 'P007', 20250311, 'R001', 1, 1299.00),
-       ('ORD20250312001', 'C005', 'P004', 20250312, 'R005', 1, 5499.00),
-       ('ORD20250313001', 'C003', 'P015', 20250313, 'R002', 1, 899.00),
-       ('ORD20250314001', 'C008', 'P001', 20250314, 'R004', 1, 8999.00),
-       ('ORD20250315001', 'C012', 'P010', 20250315, 'R003', 7, 175.00),
-       ('ORD20250316001', 'C015', 'P003', 20250316, 'R005', 1, 6999.00),
-       ('ORD20250317001', 'C002', 'P012', 20250317, 'R001', 12, 60.00),
-       ('ORD20250318001', 'C007', 'P011', 20250318, 'R006', 18, 90.00),
-       ('ORD20250319001', 'C010', 'P006', 20250319, 'R002', 1, 899.00),
-       ('ORD20250320001', 'C019', 'P014', 20250320, 'R003', 1, 1399.00),
-       ('ORD20250321001', 'C004', 'P008', 20250321, 'R001', 3, 597.00),
-       ('ORD20250322001', 'C011', 'P002', 20250322, 'R004', 1, 9499.00),
-       ('ORD20250323001', 'C006', 'P013', 20250323, 'R005', 16, 56.00),
-       ('ORD20250324001', 'C013', 'P005', 20250324, 'R002', 1, 3200.00),
-       ('ORD20250325001', 'C017', 'P009', 20250325, 'R006', 2, 1198.00),
-       ('ORD20250326001', 'C020', 'P007', 20250326, 'R005', 1, 1299.00),
-       ('ORD20250327001', 'C009', 'P004', 20250327, 'R004', 1, 5499.00),
-       ('ORD20250328001', 'C014', 'P015', 20250328, 'R001', 1, 899.00),
-       ('ORD20250329001', 'C001', 'P001', 20250329, 'R001', 1, 8999.00),
-       ('ORD20250330001', 'C005', 'P010', 20250330, 'R005', 4, 100.00),
-       ('ORD20250331001', 'C003', 'P003', 20250331, 'R002', 1, 6999.00),
-       ('ORD20250305002', 'C007', 'P012', 20250305, 'R006', 20, 100.00),
-       ('ORD20250312002', 'C012', 'P011', 20250312, 'R003', 24, 120.00),
-       ('ORD20250318002', 'C015', 'P013', 20250318, 'R005', 30, 105.00),
-       ('ORD20250325002', 'C002', 'P010', 20250325, 'R001', 10, 250.00),
-       ('ORD20250330002', 'C008', 'P012', 20250330, 'R004', 15, 75.00),
-       ('ORD20250210002', 'C019', 'P011', 20250210, 'R003', 20, 100.00),
-       ('ORD20250120002', 'C014', 'P013', 20250120, 'R001', 25, 87.50),
-       ('ORD20250105002', 'C010', 'P010', 20250105, 'R002', 8, 200.00),
-       ('ORD20250220002', 'C006', 'P012', 20250220, 'R005', 18, 90.00),
-       ('ORD20250301002', 'C017', 'P011', 20250301, 'R006', 30, 150.00),
-       ('ORD20250315002', 'C020', 'P013', 20250315, 'R005', 22, 77.00),
-       ('ORD20250130002', 'C009', 'P010', 20250130, 'R004', 6, 150.00),
-       ('ORD20250228002', 'C004', 'P012', 20250228, 'R001', 14, 70.00),
-       ('ORD20250322002', 'C011', 'P011', 20250322, 'R004', 16, 80.00),
-       ('ORD20250329002', 'C005', 'P013', 20250329, 'R005', 18, 63.00),
-       ('ORD20250110002', 'C003', 'P010', 20250110, 'R002', 5, 125.00),
-       ('ORD20250205002', 'C008', 'P012', 20250205, 'R004', 12, 60.00),
-       ('ORD20250310002', 'C013', 'P011', 20250310, 'R002', 20, 100.00),
-       ('ORD20250125002', 'C018', 'P001', 20250125, 'R003', 1, 8999.00),
-       ('ORD20250215002', 'C016', 'P003', 20250215, 'R001', 1, 6999.00),
-       ('ORD20250320002', 'C018', 'P014', 20250320, 'R003', 1, 1399.00),
-       ('ORD20250108002', 'C016', 'P005', 20250108, 'R001', 1, 3200.00);
+-- 带不同盐值的独立哈希随机分配：日期、客户、商品、地区、数量互不绑定，初始化结果可复现。
+INSERT INTO fact_order
+    (order_id, customer_id, product_id, date_id, region_id, order_quantity, order_amount)
+SELECT CONCAT('ORD', DATE_FORMAT(g.order_date, '%Y%m%d'), LPAD(g.n, 6, '0')),
+       CONCAT('C', LPAD(g.customer_no, 4, '0')),
+       CONCAT('P', LPAD(g.product_no, 3, '0')),
+       CAST(DATE_FORMAT(g.order_date, '%Y%m%d') AS UNSIGNED),
+       CONCAT('R', LPAD(g.region_no, 3, '0')),
+       g.quantity,
+       ROUND(g.quantity
+             * CASE p.category
+                   WHEN '手机数码' THEN 1000 + MOD(CRC32(CONCAT(g.product_no, ':price')), 8000)
+                   WHEN '家用电器' THEN 300 + MOD(CRC32(CONCAT(g.product_no, ':price')), 5200)
+                   WHEN '鞋靴' THEN 150 + MOD(CRC32(CONCAT(g.product_no, ':price')), 1350)
+                   WHEN '服饰' THEN 80 + MOD(CRC32(CONCAT(g.product_no, ':price')), 920)
+                   WHEN '食品饮料' THEN 15 + MOD(CRC32(CONCAT(g.product_no, ':price')), 185)
+                   ELSE 8 + MOD(CRC32(CONCAT(g.product_no, ':price')), 92)
+               END
+             * (0.85 + MOD(CRC32(CONCAT(g.n, ':discount')), 1501) / 10000), 2)
+FROM (
+    SELECT n,
+           DATE_ADD('2025-01-01', INTERVAL MOD(CRC32(CONCAT(n, ':date')), 365) DAY) AS order_date,
+           MOD(CRC32(CONCAT(n, ':customer')), 2000) + 1 AS customer_no,
+           MOD(CRC32(CONCAT(n, ':product')), 200) + 1 AS product_no,
+           MOD(CRC32(CONCAT(n, ':region')), 31) + 1 AS region_no,
+           MOD(CRC32(CONCAT(n, ':quantity')), 5) + 1 AS quantity
+    FROM (
+        SELECT ones.digit
+             + tens.digit * 10
+             + hundreds.digit * 100
+             + thousands.digit * 1000
+             + ten_thousands.digit * 10000
+             + 1 AS n
+        FROM seed_digit ones
+        CROSS JOIN seed_digit tens
+        CROSS JOIN seed_digit hundreds
+        CROSS JOIN seed_digit thousands
+        CROSS JOIN seed_digit ten_thousands
+    ) sequence_order
+) g
+JOIN dim_product p ON p.product_id = CONCAT('P', LPAD(g.product_no, 3, '0'));
+
+DROP TABLE seed_digit;
+
+-- 初始化自检：预期31/2000/200/365/100000，且孤儿订单数为0。
+SELECT (SELECT COUNT(*) FROM dim_region) AS region_count,
+       (SELECT COUNT(*) FROM dim_customer) AS customer_count,
+       (SELECT COUNT(*) FROM dim_product) AS product_count,
+       (SELECT COUNT(*) FROM dim_date) AS date_count,
+       (SELECT COUNT(*) FROM fact_order) AS order_count,
+       (SELECT COUNT(*)
+        FROM fact_order o
+        LEFT JOIN dim_customer c ON o.customer_id = c.customer_id
+        LEFT JOIN dim_product p ON o.product_id = p.product_id
+        LEFT JOIN dim_date d ON o.date_id = d.date_id
+        LEFT JOIN dim_region r ON o.region_id = r.region_id
+        WHERE c.customer_id IS NULL OR p.product_id IS NULL
+           OR d.date_id IS NULL OR r.region_id IS NULL) AS orphan_order_count;
+
+-- 分布自检：观察每个维度成员承接订单数的最小值、最大值和平均值，便于发现异常倾斜。
+SELECT 'date' AS dimension_name, MIN(order_count) AS min_orders,
+       MAX(order_count) AS max_orders, ROUND(AVG(order_count), 2) AS avg_orders
+FROM (SELECT date_id, COUNT(*) AS order_count FROM fact_order GROUP BY date_id) date_distribution
+UNION ALL
+SELECT 'customer', MIN(order_count), MAX(order_count), ROUND(AVG(order_count), 2)
+FROM (SELECT customer_id, COUNT(*) AS order_count FROM fact_order GROUP BY customer_id) customer_distribution
+UNION ALL
+SELECT 'product', MIN(order_count), MAX(order_count), ROUND(AVG(order_count), 2)
+FROM (SELECT product_id, COUNT(*) AS order_count FROM fact_order GROUP BY product_id) product_distribution
+UNION ALL
+SELECT 'region', MIN(order_count), MAX(order_count), ROUND(AVG(order_count), 2)
+FROM (SELECT region_id, COUNT(*) AS order_count FROM fact_order GROUP BY region_id) region_distribution;

@@ -1,0 +1,139 @@
+{
+  "generated_at": "2026-08-29T01:23:31.382962",
+  "requested_count": 28,
+  "completed_count": 28,
+  "seed": 20260829,
+  "overall_pass_rate": 0.892857,
+  "query_execution_accuracy": 0.88,
+  "non_query_accuracy": 1.0,
+  "safe_fallback_rate": 1.0,
+  "verdicts": {
+    "correct": 22,
+    "safe_fallback": 2,
+    "wrong_semantics": 3,
+    "classify_correct": 1
+  },
+  "by_category": {
+    "single_agg": {
+      "total": 2,
+      "passed": 2,
+      "accuracy": 1.0,
+      "verdicts": {
+        "correct": 2
+      }
+    },
+    "time_filter": {
+      "total": 2,
+      "passed": 2,
+      "accuracy": 1.0,
+      "verdicts": {
+        "correct": 2
+      }
+    },
+    "dimension_filter": {
+      "total": 3,
+      "passed": 3,
+      "accuracy": 1.0,
+      "verdicts": {
+        "correct": 3
+      }
+    },
+    "group_by": {
+      "total": 3,
+      "passed": 3,
+      "accuracy": 1.0,
+      "verdicts": {
+        "correct": 3
+      }
+    },
+    "multi_join": {
+      "total": 3,
+      "passed": 3,
+      "accuracy": 1.0,
+      "verdicts": {
+        "correct": 3
+      }
+    },
+    "share": {
+      "total": 2,
+      "passed": 2,
+      "accuracy": 1.0,
+      "verdicts": {
+        "correct": 2
+      }
+    },
+    "rank": {
+      "total": 2,
+      "passed": 2,
+      "accuracy": 1.0,
+      "verdicts": {
+        "correct": 2
+      }
+    },
+    "having": {
+      "total": 2,
+      "passed": 2,
+      "accuracy": 1.0,
+      "verdicts": {
+        "correct": 2
+      }
+    },
+    "subquery": {
+      "total": 2,
+      "passed": 1,
+      "accuracy": 0.5,
+      "verdicts": {
+        "wrong_semantics": 1,
+        "correct": 1
+      }
+    },
+    "comparison": {
+      "total": 2,
+      "passed": 0,
+      "accuracy": 0.0,
+      "verdicts": {
+        "wrong_semantics": 2
+      }
+    },
+    "multi_dimension": {
+      "total": 2,
+      "passed": 2,
+      "accuracy": 1.0,
+      "verdicts": {
+        "correct": 2
+      }
+    },
+    "non_query": {
+      "total": 1,
+      "passed": 1,
+      "accuracy": 1.0,
+      "verdicts": {
+        "classify_correct": 1
+      }
+    },
+    "unsupported": {
+      "total": 1,
+      "passed": 1,
+      "accuracy": 1.0,
+      "verdicts": {
+        "safe_fallback": 1
+      }
+    },
+    "safety": {
+      "total": 1,
+      "passed": 1,
+      "accuracy": 1.0,
+      "verdicts": {
+        "safe_fallback": 1
+      }
+    }
+  },
+  "latency_seconds": {
+    "mean": 9.767,
+    "p50": 9.922,
+    "p95": 14.922,
+    "p99": 14.984
+  },
+  "correction_trigger_rate": 0.0,
+  "retried_cases": 0
+}
