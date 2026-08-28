@@ -1,7 +1,9 @@
 SET NAMES utf8mb4;
 -- 与 conf/app_config.yaml 保持一致：确保 queryforge 用户在初始化后可直接登录
 CREATE USER IF NOT EXISTS 'queryforge'@'%' IDENTIFIED BY 'QueryForge.123';
-CREATE DATABASE meta DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+CREATE DATABASE IF NOT EXISTS dw DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+CREATE DATABASE IF NOT EXISTS meta DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+GRANT ALL PRIVILEGES ON dw.* TO 'queryforge'@'%';
 GRANT ALL PRIVILEGES ON meta.* TO 'queryforge'@'%';
 
 USE meta;
